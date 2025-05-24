@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      color: #333;
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+    }
+    h1 {
+      text-align: center;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .section {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .section-title {
+      margin-top: 0;
+      color: #2c3e50;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 10px;
+    }
+    form {
+      margin: 20px 0;
+      background: #f9f9f9;
+      padding: 20px;
+      border-radius: 4px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input[type="text"], select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 16px;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      flex: 1;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    button.secondary {
+      background-color: #3498db;
+    }
+    button.secondary:hover {
+      background-color: #2980b9;
+    }
+    .results {
+      margin-top: 20px;
+    }
+    .result-item {
+      background: #f9f9f9;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      border-left: 4px solid #4CAF50;
+    }
+    .related-courses {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #ddd;
+    }
+    .course-item {
+      background: #e9f7ef;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 4px;
+      border-left: 3px solid #2ecc71;
+    }
+    .error {
+      color: #d8000c;
+      background-color: #ffbaba;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .no-results {
+      color: #9f6000;
+      background-color: #feefb3;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .no-courses {
+      color: #777;
+      font-style: italic;
+      margin: 5px 0;
+    }
+    .namhocky-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 15px 0;
+    }
+    .namhocky-item {
+      padding: 8px 15px;
+      background: #3498db;
+      color: white;
+      border-radius: 20px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+    .namhocky-item:hover {
+      background: #2980b9;
+    }
+    .student-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+    .student-table th, .student-table td {
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    .student-table th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+    .student-table tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    .student-table tr:hover {
+      background-color: #f1f1f1;
+    }
+    .summary-box {
+      background-color: #e0f7fa;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 15px 0;
+      border-left: 4px solid #00bcd4;
+    }
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+      margin: 20px 0;
+    }
+    .pagination button {
+      padding: 5px 10px;
+      background: #f1f1f1;
+      border: 1px solid #ddd;
+      color: #333;
+      cursor: pointer;
+    }
+    .pagination button.active {
+      background: #3498db;
+      color: white;
+    }
+    .nav-links {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin: 20px 0;
+      padding: 10px;
+      background: #f5f5f5;
+      border-radius: 4px;
+    }
+    .nav-link {
+      text-decoration: none;
+      color: #3498db;
+      font-weight: bold;
+      padding: 5px 10px;
+      border-radius: 4px;
+      transition: background 0.3s;
+    }
+    .nav-link:hover {
+      background: #e0e0e0;
+    }
+    .semester-group {
+      margin-bottom: 30px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .semester-group h4 {
+      margin: 0;
+      padding: 10px 15px;
+      background-color: #f2f2f2;
+      border-bottom: 1px solid #ddd;
+    }
+    .semester-group .student-table {
+      margin: 0;
+    }
+    .toggle-details {
+      background-color: #3498db;
+      color: white;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .toggle-details:hover {
+      background-color: #2980b9;
+    }
+    .student-details {
+      padding: 15px;
+      background-color: #f9f9f9;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    .nested-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    .nested-table th, .nested-table td {
+      padding: 6px 8px;
+      border: 1px solid #ddd;
+      font-size: 14px;
+    }
+    .nested-table th {
+      background-color: #e9e9e9;
+    }
+    .nested-table tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+    .plo-groups {
+      margin: 15px 0;
+      padding: 10px;
+      background-color: #f7f7f7;
+      border-radius: 4px;
+    }
+    .plo-group {
+      margin: 10px 0;
+      padding: 10px;
+      background-color: #f0f8ff;
+      border-left: 3px solid #3498db;
+      border-radius: 3px;
+    }
+    .plo-group p {
+      margin: 5px 0;
+    }
+    
+    /* CSS cho hiển thị theo PLO và môn học */
+    .plo-details-accordion {
+      margin: 20px 0;
+    }
+    
+    .plo-detail-group {
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .plo-header {
+      background-color: #f2f2f2;
+      padding: 10px 15px;
+      cursor: pointer;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    .plo-header h4 {
+      margin: 0;
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    .toggle-icon {
+      font-weight: bold;
+      font-size: 18px;
+    }
+    
+    .plo-content {
+      padding: 15px;
+    }
+    
+    .mon-hoc-groups {
+      margin: 10px 0;
+    }
+    
+    .mon-hoc-group {
+      margin: 15px 0;
+      padding: 10px;
+      background-color: #f8f8f8;
+      border-left: 3px solid #4CAF50;
+      border-radius: 3px;
+    }
+    
+    .mon-hoc-group h5 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      color: #333;
+    }
+    
+    .monhoc-stats {
+      margin-top: 10px;
+      padding: 8px;
+      background-color: #e8f5e9;
+      border-radius: 4px;
+    }
+    
+    .plo-avg-list {
+      padding-left: 20px;
+    }
+    
+    .plo-avg-list li {
+      margin-bottom: 5px;
+    }
+    
+    /* CSS cập nhật cho progress bar */
+    .progress-bar-total {
+      position: absolute;
+      height: 100%;
+      width: 100%;
+      background-color: #e0e0e0; /* Xám cho tổng trọng số */
+      left: 0;
+      top: 0;
+    }
+    
+    /* .progress-bar-achieved {
+      position: absolute;
+      height: 100%;
+      background-color: #4CAF50; /* Xanh lá cho phần đạt 
+      left: 0;
+      top: 0;
+      z-index: 2;
+    }
+    
+    .progress-bar-achieved.full {
+      background-color: #FFD700; /* Vàng khi đạt 100% 
+    } */
+    
+    .success {
+      color: #4CAF50;
+      font-weight: bold;
+    }
+    
+    .failure {
+      color: #f44336;
+      font-weight: bold;
+    }
+    
+    .student-detail-group {
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .student-header {
+      background-color: #f2f2f2;
+      padding: 10px 15px;
+      cursor: pointer;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    .student-content {
+      padding: 15px;
+    }
+    
+    .plo-progress-group {
+      margin: 15px 0;
+      padding: 10px;
+      background-color: #f8f8f8;
+      border-left: 3px solid #3498db;
+      border-radius: 3px;
+    }
+    
+    .monhoc-details {
+      margin-top: 15px;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border-radius: 4px;
+    }
+    /* CSS cho thanh tiến trình với 3 màu */
+    .progress-bar-container {
+      width: 100%;
+      background-color: #ffffff;
+      border-radius: 4px;
+      height: 20px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #ddd;
+      display: flex;
+    }
+    .progress-bar-segment {
+      height: 100%;
+      float: left;
+    }
+    .progress-bar-achieved {
+      height: 100%;
+      background-color: #4CAF50; /* Màu xanh lá cho phần đạt */
+    }
+    .progress-bar-faile-achieved {
+      height: 100%;
+      background-color: #808080; /* Màu xám cho phần không đạt */
+    }
+    .progress-bar-not-attempted {
+      height: 100%;
+      background-color: #ffffff; /* Màu trắng cho phần chưa học */
+    }
+    .progress-bar-full {
+      height: 100%;
+      background-color: #FFD700; /* Màu vàng khi tất cả đều đạt */
+    }
+    .success {
+      color: #4CAF50;
+      font-weight: bold;
+    }
+    .failure {
+      color: #f44336;
+      font-weight: bold;
+    }
+    .not-attempted {
+      color: #808080;
+      font-style: italic;
+    }
+    /* CSS cho autocomplete */
+.autocomplete-container {
+  position: relative;
+  width: 100%;
+}
+
+.autocomplete-suggestions {
+  position: absolute;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  z-index: 1000;
+  width: 100%;
+  max-height: 250px;
+  overflow-y: auto;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.suggestion-item {
+  padding: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+.suggestion-item:hover {
+  background-color: #f5f5f5;
+}
+
+/* CSS cho thanh tiến trình */
+.progress-bar-container {
+  width: 100%;
+  background-color: #ffffff;
+  border-radius: 4px;
+  height: 20px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #ddd;
+  display: flex;
+}
+
+.progress-bar-achieved {
+  height: 100%;
+  background-color: #4CAF50; /* Màu xanh lá cho phần đạt */
+}
+
+.progress-bar-not-achieved {
+  height: 100%;
+  background-color: #808080; /* Màu xám cho phần không đạt */
+}
+
+.progress-bar-not-attempted {
+  height: 100%;
+  background-color: #ffffff; /* Màu trắng cho phần chưa học */
+}
+
+.progress-bar-full {
+  height: 100%;
+  background-color: #FFD700; /* Màu vàng khi tất cả đều đạt */
+}
+  </style>
+</head>
+<body>
+  <h1><%= title %></h1>
+  
+  <!-- Navigation Links -->
+  <div class="nav-links">
+    <a href="/" class="nav-link">Trang chủ</a>
+    <a href="/namhocky" class="nav-link">Danh sách năm học kỳ</a>
+    <a href="/sinhvien" class="nav-link">Tìm kiếm sinh viên</a>
+    <a href="/diem" class="nav-link">Tra cứu điểm</a>
+    <a href="/svtheokhoi" class="nav-link">Sinh viên theo khối</a>
+    <a href="/ploProgress" class="nav-link">Tiến trình PLO</a>
+    <a href="/allStudentsProgress" class="nav-link">Theo dõi tiến trình tất cả sinh viên</a>
+  </div>
+  
+  <div class="container">
+    <% if (locals.error) { %>
+      <div class="error">
+        <%= error %>
+      </div>
+    <% } %>
+    
+    <!-- Phần 1: Tìm kiếm tiêu chí -->
+    <% if (locals.showSearchSection) { %>
+      <div class="section">
+        <h2 class="section-title">Tìm kiếm tiêu chí</h2>
+        
+        <form action="/searchPLO" method="POST">
+          <div class="form-group">
+            <label for="maKhoi">Nhập Mã Khối:</label>
+            <input type="text" id="maKhoi" name="maKhoi" value="<%= locals.query || '' %>" required>
+          </div>
+          <button type="submit">Tìm kiếm</button>
+        </form>
+
+        <% if (locals.results && results.length > 0) { %>
+          <div class="results">
+            <h3>Kết quả tìm kiếm cho mã khối: <%= query %></h3>
+            
+            <% results.forEach(function(result) { %>
+              <div class="result-item">
+                <h4>Tiêu chí: <%= result.tieuChi.MaTieuChi %></h4>
+                <p><strong>PLO:</strong> <%= result.tieuChi.MaPLO %></p>
+                <p><strong>Mô tả:</strong> <%= result.tieuChi.MoTa || 'Không có mô tả' %></p>
+                
+                <div class="related-courses">
+                  <h5>Môn học liên quan:</h5>
+                  
+                  <% if (result.monHocList && result.monHocList.length > 0) { %>
+                    <% result.monHocList.forEach(function(monHoc) { %>
+                      <div class="course-item">
+                        <p><strong>Mã môn học:</strong> <%= monHoc.MaMH %></p>
+                        <p><strong>Mã tiêu chí:</strong> <%= monHoc.MaTieuChi %></p>
+                      </div>
+                    <% }); %>
+                  <% } else { %>
+                    <p class="no-courses">Không có môn học nào liên quan.</p>
+                  <% } %>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+        <% } else if (locals.query) { %>
+          <div class="no-results">
+            Không tìm thấy kết quả nào cho mã khối "<%= query %>".
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+    
+    <!-- Phần 2: Danh sách NamHocKy -->
+    <% if (locals.namHocKyList && namHocKyList.length > 0 && !locals.sinhVienSearchMode && !locals.diemSinhVienSearchMode && !locals.sinhVienTheoKhoiSearchMode && !locals.ploProgressMode) { %>
+      <div class="section">
+        <h2 class="section-title">Danh sách năm học kỳ</h2>
+        <div class="namhocky-list">
+          <% namHocKyList.forEach(function(namHocKy) { %>
+            <div class="namhocky-item">
+              <%= namHocKy.formatted %>
+            </div>
+          <% }); %>
+        </div>
+      </div>
+    <% } %>
+    
+    <!-- Phần 3: Tìm kiếm sinh viên -->
+    <% if (locals.sinhVienSearchMode) { %>
+      <div class="section">
+        <h2 class="section-title">Tìm kiếm sinh viên theo khối</h2>
+        
+        <form action="/searchSinhVien" method="POST">
+          <div class="form-group">
+            <label for="maKhoi">Nhập Mã Khối:</label>
+            <input type="text" id="maKhoi" name="maKhoi" value="<%= locals.maKhoiQuery || '' %>" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="namHocKy">Năm học kỳ (tùy chọn):</label>
+            <select id="namHocKy" name="namHocKy">
+              <option value="">-- Tất cả năm học kỳ --</option>
+              <% if (locals.namHocKyList) { %>
+                <% namHocKyList.forEach(function(namHocKy) { %>
+                  <option value="<%= namHocKy.value %>" <%= locals.selectedNamHocKy && locals.selectedNamHocKy == namHocKy.value ? 'selected' : '' %>>
+                    <%= namHocKy.formatted %>
+                  </option>
+                <% }); %>
+              <% } %>
+            </select>
+          </div>
+          
+          <input type="hidden" name="showResults" value="false">
+          
+          <div class="button-group">
+            <button type="submit">Tìm kiếm</button>
+            <button type="submit" class="secondary" onclick="document.getElementsByName('showResults')[0].value = 'true';">Tìm kiếm và xem danh sách</button>
+          </div>
+        </form>
+
+        <% if (locals.sinhVienResults) { %>
+          <div class="results">
+            <div class="summary-box">
+              <h3>Thông tin tìm kiếm</h3>
+              <p><strong>Mã khối:</strong> <%= maKhoiQuery %></p>
+              <% if (locals.selectedNamHocKy) { %>
+                <p><strong>Năm học kỳ:</strong> <%= namHocKyList.find(n => n.value === selectedNamHocKy).formatted %></p>
+              <% } else { %>
+                <p><strong>Năm học kỳ:</strong> Tất cả</p>
+              <% } %>
+              <p><strong>Tổng số sinh viên:</strong> <%= totalCount %></p>
+              <p><strong>Số sinh viên hiện diện:</strong> <%= presentCount %></p>
+            </div>
+            
+            <% if (showResults) { %>
+              <% if (sinhVienResults.length === 0) { %>
+                <div class="no-results">
+                  Không tìm thấy sinh viên nào khớp với điều kiện tìm kiếm.
+                </div>
+              <% } else { %>
+                <h3>Danh sách sinh viên:</h3>
+                <div id="studentTableContainer">
+                  <table class="student-table">
+                    <thead>
+                      <tr>
+                        <th>STT</th>
+                        <th>Mã sinh viên</th>
+                        <th>Mã khoa</th>
+                        <th>Mã ngành/chương trình</th>
+                        <% if (!locals.selectedNamHocKy) { %>
+                          <th>Năm học kỳ</th>
+                        <% } %>
+                        <th>Điểm hiện diện</th>
+                      </tr>
+                    </thead>
+                    <tbody id="studentTableBody">
+                      <% sinhVienResults.forEach(function(sv, index) { %>
+                        <tr>
+                          <td><%= index + 1 %></td>
+                          <td><%= sv.MaSV %></td>
+                          <td><%= sv.MaKhoa %></td>
+                          <td><%= sv.MaNgChng %></td>
+                          <% if (!locals.selectedNamHocKy) { %>
+                            <td><%= locals.namHocKyMap[sv.NamHocKy] || sv.NamHocKy %></td>
+                          <% } %>
+                          <td><%= sv.HienDienSV %></td>
+                        </tr>
+                      <% }); %>
+                    </tbody>
+                  </table>
+                </div>
+                
+                <!-- Phân trang phía client -->
+                <div id="pagination" class="pagination"></div>
+                
+                <script>
+                  // Script phân trang phía client
+                  document.addEventListener('DOMContentLoaded', function() {
+                    const itemsPerPage = 50;
+                    const rows = document.querySelectorAll('#studentTableBody tr');
+                    const pageCount = Math.ceil(rows.length / itemsPerPage);
+                    const pagination = document.getElementById('pagination');
+                    
+                    // Tạo nút phân trang
+                    for (let i = 1; i <= pageCount; i++) {
+                      const button = document.createElement('button');
+                      button.innerText = i;
+                      button.addEventListener('click', function() {
+                        showPage(i);
+                        
+                        // Đánh dấu nút đang active
+                        document.querySelectorAll('#pagination button').forEach(btn => {
+                          btn.classList.remove('active');
+                        });
+                        this.classList.add('active');
+                      });
+                      
+                      pagination.appendChild(button);
+                    }
+                    
+                    // Hàm hiển thị trang
+                    function showPage(pageNum) {
+                      const start = (pageNum - 1) * itemsPerPage;
+                      const end = start + itemsPerPage;
+                      
+                      rows.forEach((row, index) => {
+                        if (index >= start && index < end) {
+                          row.style.display = '';
+                        } else {
+                          row.style.display = 'none';
+                        }
+                      });
+                    }
+                    
+                    // Hiển thị trang đầu tiên và đánh dấu nút
+                    if (pageCount > 0) {
+                      showPage(1);
+                      pagination.querySelector('button').classList.add('active');
+                    }
+                  });
+                </script>
+              <% } %>
+            <% } %>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+    
+    <!-- Phần 4: Tra cứu điểm sinh viên -->
+    <% if (locals.diemSinhVienSearchMode) { %>
+      <div class="section">
+        <h2 class="section-title">Tra cứu điểm sinh viên</h2>
+        
+        <form action="/searchDiem" method="POST">
+          <div class="form-group">
+            <label for="maSV">Nhập Mã Sinh Viên:</label>
+            <input type="text" id="maSV" name="maSV" value="<%= locals.maSVQuery || '' %>" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="maKhoi">Mã Khối (tùy chọn):</label>
+            <input type="text" id="maKhoi" name="maKhoi" value="<%= locals.maKhoiQuery || '' %>">
+          </div>
+          
+          <button type="submit">Tra cứu</button>
+        </form>
+
+        <% if (locals.diemResults) { %>
+          <div class="results">
+            <div class="summary-box">
+              <h3>Thông tin sinh viên</h3>
+              <p><strong>Mã sinh viên:</strong> <%= maSVQuery %></p>
+              <% if (locals.maKhoiQuery) { %>
+                <p><strong>Mã khối:</strong> <%= maKhoiQuery %></p>
+              <% } %>
+              <p><strong>Tổng số môn học:</strong> <%= locals.totalMonHoc || 0 %></p>
+              <% if (locals.avgScore) { %>
+                <p><strong>Điểm trung bình:</strong> <%= avgScore %></p>
+              <% } %>
+            </div>
+            
+            <% if (diemResults.length === 0) { %>
+              <div class="no-results">
+                Không tìm thấy điểm nào cho sinh viên này.
+              </div>
+            <% } else { %>
+              <% if (locals.semesterGroups && Object.keys(semesterGroups).length > 0) { %>
+                <h3>Điểm theo học kỳ:</h3>
+                
+                <% for (const namHK in semesterGroups) { %>
+                  <div class="semester-group">
+                    <h4><%= locals.formatNamHK ? formatNamHK(parseInt(namHK)) : namHK %></h4>
+                    
+                    <table class="student-table">
+                      <thead>
+                        <tr>
+                          <th>STT</th>
+                          <th>Mã môn học</th>
+                          <th>Điểm số HP</th>
+                          <% if (locals.showMaKhoi) { %>
+                            <th>Mã khối</th>
+                          <% } %>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% semesterGroups[namHK].forEach(function(diem, index) { %>
+                          <tr>
+                            <td><%= index + 1 %></td>
+                            <td><%= diem.MaMH %></td>
+                            <td><%= diem.DiemSoHP || 'N/A' %></td>
+                            <% if (locals.showMaKhoi) { %>
+                              <td><%= diem.MaKhoi || 'N/A' %></td>
+                            <% } %>
+                          </tr>
+                        <% }); %>
+                      </tbody>
+                    </table>
+                  </div>
+                <% } %>
+              <% } else { %>
+                <h3>Danh sách điểm:</h3>
+                
+                <table class="student-table">
+                  <thead>
+                    <tr>
+                      <th>STT</th>
+                      <th>Mã môn học</th>
+                      <th>Năm học kỳ</th>
+                      <th>Điểm số HP</th>
+                      <% if (locals.showMaKhoi) { %>
+                        <th>Mã khối</th>
+                      <% } %>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% diemResults.forEach(function(diem, index) { %>
+                      <tr>
+                        <td><%= index + 1 %></td>
+                        <td><%= diem.MaMH %></td>
+                        <td><%= locals.formatNamHK ? formatNamHK(diem.NamHK) : diem.NamHK %></td>
+                        <td><%= diem.DiemSoHP || 'N/A' %></td>
+                        <% if (locals.showMaKhoi) { %>
+                          <td><%= diem.MaKhoi || 'N/A' %></td>
+                        <% } %>
+                      </tr>
+                    <% }); %>
+                  </tbody>
+                </table>
+              <% } %>
+            <% } %>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+    
+    <!-- Phần 5: Tìm kiếm sinh viên theo khối và năm học kỳ -->
+    <% if (locals.sinhVienTheoKhoiSearchMode) { %>
+      <div class="section">
+        <h2 class="section-title">Tìm sinh viên theo khối và năm học kỳ</h2>
+        
+        <form action="/searchSVTheoKhoi" method="POST">
+          <div class="form-group">
+            <label for="maKhoi">Nhập Mã Khối:</label>
+            <input type="text" id="maKhoi" name="maKhoi" value="<%= locals.maKhoiQuery || '' %>" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="namHK">Chọn Năm học kỳ:</label>
+            <select id="namHK" name="namHK" required>
+              <option value="">-- Chọn năm học kỳ --</option>
+              <% if (locals.namHKList) { %>
+                <% namHKList.forEach(function(namHK) { %>
+                  <option value="<%= namHK.value %>" <%= locals.selectedNamHK && locals.selectedNamHK == namHK.value ? 'selected' : '' %>>
+                    <%= namHK.formatted %>
+                  </option>
+                <% }); %>
+              <% } %>
+            </select>
+          </div>
+          
+          <button type="submit">Tìm kiếm</button>
+        </form>
+
+        <!-- Kết quả tìm kiếm sinh viên theo khối và năm học kỳ -->
+        <% if (locals.svKhoiResults) { %>
+          <div class="results">
+            <div class="summary-box">
+              <h3>Thông tin tìm kiếm</h3>
+              <p><strong>Mã khối:</strong> <%= maKhoiQuery %></p>
+              <p><strong>Năm học kỳ:</strong> <%= namHKFormatted %></p>
+              <p><strong>Tổng số sinh viên:</strong> <%= totalSV %></p>
+            </div>
+            
+            <!-- Phần: Chi tiết điểm theo PLO và môn học (chỉ giữ lại phần này) -->
+            <h3>Chi tiết điểm theo PLO và môn học:</h3>
+            
+            <% if (locals.ploMonHocDiemMap && Object.keys(ploMonHocDiemMap).length > 0) { %>
+              <div class="plo-details-accordion">
+                <% for (const plo in ploMonHocDiemMap) { %>
+                  <div class="plo-detail-group">
+                    <div class="plo-header" onclick="togglePloDetails('<%= plo %>')">
+                      <h4>PLO: <%= plo %> <span class="toggle-icon">+</span></h4>
+                    </div>
+                    
+                    <div id="plo-detail-<%= plo %>" class="plo-content" style="display: none;">
+                      <% const monHocDiemMap = ploMonHocDiemMap[plo]; %>
+                      <% if (Object.keys(monHocDiemMap).length > 0) { %>
+                        <div class="mon-hoc-groups">
+                          <% for (const maMH in monHocDiemMap) { %>
+                            <div class="mon-hoc-group">
+                              <h5>Môn học: <%= maMH %></h5>
+                              
+                              <% const diemList = monHocDiemMap[maMH] || []; %>
+                              <% if (diemList.length > 0) { %>
+                                <table class="nested-table">
+                                  <thead>
+                                    <tr>
+                                      <th>STT</th>
+                                      <th>Mã sinh viên</th>
+                                      <th>Điểm số HP</th>
+                                      <th>Năm HK</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <% diemList.forEach(function(diem, index) { %>
+                                      <tr>
+                                        <td><%= index + 1 %></td>
+                                        <td><%= diem.MaSV %></td>
+                                        <td><%= diem.DiemSoHP || 'N/A' %></td>
+                                        <td><%= formatNamHK ? formatNamHK(diem.NamHK) : diem.NamHK %></td>
+                                      </tr>
+                                    <% }); %>
+                                  </tbody>
+                                </table>
+                                
+                                <!-- Thêm: Thống kê điểm môn học -->
+                                <% 
+                                  let totalScore = 0;
+                                  let validScores = 0;
+                                  
+                                  diemList.forEach(function(diem) {
+                                    if (diem.DiemSoHP && !isNaN(parseFloat(diem.DiemSoHP))) {
+                                      totalScore += parseFloat(diem.DiemSoHP);
+                                      validScores++;
+                                    }
+                                  });
+                                  
+                                  const avgScore = validScores > 0 ? (totalScore / validScores).toFixed(2) : 'N/A';
+                                %>
+                                <div class="monhoc-stats">
+                                  <p><strong>Tổng số sinh viên:</strong> <%= diemList.length %></p>
+                                  <p><strong>Điểm trung bình:</strong> <%= avgScore %></p>
+                                </div>
+                              <% } else { %>
+                                <p class="no-results">Không có điểm nào cho môn học này.</p>
+                              <% } %>
+                            </div>
+                          <% } %>
+                        </div>
+                      <% } else { %>
+                        <p class="no-results">Không có dữ liệu điểm cho PLO này.</p>
+                      <% } %>
+                    </div>
+                  </div>
+                <% } %>
+              </div>
+            <% } else { %>
+              <p class="no-results">Không có dữ liệu phân tích chi tiết.</p>
+            <% } %>
+            
+            <!-- Script để toggle hiển thị chi tiết -->
+            <script>
+              function togglePloDetails(plo) {
+                const content = document.getElementById('plo-detail-' + plo);
+                const header = content.previousElementSibling;
+                const icon = header.querySelector('.toggle-icon');
+                
+                if (content.style.display === 'none') {
+                  content.style.display = 'block';
+                  icon.textContent = '-';
+                } else {
+                  content.style.display = 'none';
+                  icon.textContent = '+';
+                }
+              }
+            </script>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+    
+    <!-- Phần 6: Theo dõi tiến trình PLO của sinh viên -->
+<% if (locals.ploProgressMode) { %>
+  <div class="section">
+    <h2 class="section-title">Theo dõi tiến trình PLO của sinh viên</h2>
+    
+    <!-- Form tìm kiếm mã khối -->
+    <form action="/searchPLOProgress" method="POST">
+      <div class="form-group">
+        <label for="maKhoi">Nhập Mã Khối:</label>
+        <input type="text" id="maKhoi" name="maKhoi" value="<%= locals.maKhoiQuery || '' %>" required>
+      </div>
+      
+      <button type="submit" class="btn-primary">Tìm kiếm</button>
+    </form>
+
+    <!-- Hiển thị form chọn sinh viên nếu đã có mã khối -->
+    <% if (locals.sinhVienOptions && locals.sinhVienOptions.length > 0) { %>
+      <div class="student-selection">
+        <h3>Chọn Sinh Viên:</h3>
+        <input type="text" id="maSVInput" class="search-input" placeholder="Nhập mã sinh viên..." 
+               value="<%= locals.selectedMaSV || '' %>">
+        
+        <div id="svSuggestions" class="suggestion-list">
+          <%
+          var uniqueSVs = [];
+          var uniqueMaSVs = new Set();
+          
+          locals.sinhVienOptions.forEach(function(sv) {
+            if (!uniqueMaSVs.has(sv.MaSV)) {
+              uniqueMaSVs.add(sv.MaSV);
+              uniqueSVs.push(sv);
+            }
+          });
+          
+          uniqueSVs.forEach(function(sv) { 
+          %>
+            <div class="suggestion-item" onclick="selectSinhVien('<%= sv.MaSV %>')">
+              <%= sv.MaSV %>
+            </div>
+          <% }); %>
+        </div>
+        
+        <form action="/searchPLOProgress" method="POST" id="sinhVienForm">
+          <input type="hidden" name="maKhoi" value="<%= locals.maKhoiQuery %>">
+          <input type="hidden" id="maSV" name="maSV" value="<%= locals.selectedMaSV || '' %>">
+          <button type="submit" id="submitSV" class="btn-success">Xem tiến trình</button>
+        </form>
+      </div>
+      
+      <script>
+        // Lọc danh sách sinh viên khi nhập
+        document.getElementById('maSVInput').addEventListener('input', function() {
+          const input = this.value.toLowerCase();
+          const suggestionItems = document.querySelectorAll('.suggestion-item');
+          
+          suggestionItems.forEach(function(item) {
+            const maSV = item.textContent.trim().toLowerCase();
+            if (maSV.includes(input)) {
+              item.style.display = 'block';
+            } else {
+              item.style.display = 'none';
+            }
+          });
+          
+          document.getElementById('svSuggestions').style.display = 'block';
+        });
+        
+        // Hàm chọn sinh viên
+        function selectSinhVien(maSV) {
+          document.getElementById('maSVInput').value = maSV;
+          document.getElementById('maSV').value = maSV;
+          document.getElementById('svSuggestions').style.display = 'none';
+        }
+        
+        // Hiển thị danh sách khi click vào input
+        document.getElementById('maSVInput').addEventListener('click', function() {
+          document.getElementById('svSuggestions').style.display = 'block';
+        });
+        
+        // Đóng danh sách khi click ra ngoài
+        document.addEventListener('click', function(e) {
+          if (e.target.id !== 'maSVInput' && !e.target.classList.contains('suggestion-item')) {
+            document.getElementById('svSuggestions').style.display = 'none';
+          }
+        });
+        
+        // Cập nhật giá trị form khi submit
+        document.getElementById('sinhVienForm').addEventListener('submit', function(e) {
+          const maSVInput = document.getElementById('maSVInput').value;
+          document.getElementById('maSV').value = maSVInput;
+        });
+      </script>
+      
+      <style>
+        .student-selection {
+          margin-top: 20px;
+          padding: 15px;
+          background-color: #f9f9f9;
+          border-radius: 4px;
+          border: 1px solid #ddd;
+        }
+        
+        .search-input {
+          width: 100%;
+          padding: 10px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          margin-bottom: 10px;
+        }
+        
+        .suggestion-list {
+          max-height: 200px;
+          overflow-y: auto;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          margin-bottom: 10px;
+          background-color: white;
+          display: none;
+        }
+        
+        .suggestion-item {
+          padding: 10px;
+          cursor: pointer;
+          border-bottom: 1px solid #eee;
+        }
+        
+        .suggestion-item:hover {
+          background-color: #f0f0f0;
+        }
+        
+        .btn-success {
+          background-color: #4CAF50;
+          color: white;
+          padding: 10px 15px;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+        
+        .btn-primary {
+          background-color: #3498db;
+          color: white;
+          padding: 10px 15px;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+      </style>
+    <% } %>
+
+    <!-- Hiển thị lỗi nếu có -->
+    <% if (locals.error) { %>
+      <div class="error">
+        <%= error %>
+      </div>
+    <% } %>
+
+    <!-- Kết quả theo dõi tiến trình -->
+    <% if (locals.ploProgressResults && locals.ploProgressResults.sinhVien) { %>
+      <div class="results">
+        <div class="summary-box">
+          <h3>Thông tin sinh viên</h3>
+          <p><strong>Mã sinh viên:</strong> <%= ploProgressResults.sinhVien.MaSV %></p>
+          <% if (ploProgressResults.sinhVien.info) { %>
+            <p><strong>Mã khoa:</strong> <%= ploProgressResults.sinhVien.info.MaKhoa || '' %></p>
+            <p><strong>Mã ngành/chương trình:</strong> <%= ploProgressResults.sinhVien.info.MaNgChng || '' %></p>
+          <% } %>
+        </div>
+        
+        <!-- Hiển thị tiến trình theo PLO -->
+        <% 
+          // Lấy danh sách PLO
+          const ploList = Object.keys(ploProgressResults.ploGroups);
+          
+          // Duyệt qua từng PLO
+          ploList.forEach(function(plo) {
+            if (ploProgressResults.sinhVien.plos && ploProgressResults.sinhVien.plos[plo]) {
+              const ploData = ploProgressResults.sinhVien.plos[plo];
+        %>
+          <div class="plo-detail-group">
+            <div class="plo-header">
+              <h3>PLO: <%= plo %></h3>
+            </div>
+            
+            <div class="plo-content">
+              <table class="student-table">
+                <thead>
+                  <tr>
+                    <th>Năm học kỳ</th>
+                    <th>Tiến trình</th>
+                    <th>Tỷ lệ đạt</th>
+                    <th>Chi tiết môn học</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% 
+                    // Lấy danh sách năm học kỳ
+                    ploProgressResults.namHKList.forEach(function(namHKObj) {
+                      const namHK = namHKObj.value;
+                      if (ploData.semesters && ploData.semesters[namHK]) {
+                        const semesterData = ploData.semesters[namHK];
+                  %>
+                    <tr>
+                      <td><%= namHKObj.formatted %></td>
+                      <td>
+                        <div class="progress-bar-container">
+                          <% if (semesterData.allAchieved) { %>
+                            <!-- Tất cả đều đạt - hiển thị màu vàng -->
+                            <div class="progress-bar-full" style="width: 100%;"></div>
+                          <% } else { %>
+                            <!-- Hiển thị 3 màu khác nhau theo thứ tự: xanh lá (đạt), xám (không đạt), trắng (chưa có) -->
+                            <% if (semesterData.achievedPercent > 0) { %>
+                            <div class="progress-bar-achieved" style="width: <%= semesterData.achievedPercent %>%;"></div>
+                            <% } %>
+                            <% if (semesterData.notAchievedPercent > 0) { %>
+                            <div class="progress-bar-faile-achieved" style="width: <%= semesterData.notAchievedPercent %>%;"></div>
+                            <% } %>
+                            <% if (semesterData.notAttemptedPercent > 0) { %>
+                            <div class="progress-bar-not-attempted" style="width: <%= semesterData.notAttemptedPercent %>%;"></div>
+                            <% } %>
+                          <% } %>
+                        </div>
+                      </td>
+                      <td><%= semesterData.achievedRatio %></td>
+                      <td>
+                        <button class="toggle-details" onclick="toggleMonHocDetails('<%= plo %>_<%= namHK %>')">
+                          Chi tiết
+                        </button>
+                        <div id="monhoc-details-<%= plo %>_<%= namHK %>" class="monhoc-details" style="display: none;">
+                          <table class="nested-table">
+                            <thead>
+                              <tr>
+                                <th>Môn học</th>
+                                <th>Trạng thái</th>
+                                <th>Trọng số</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <% 
+                                const monHocStatus = semesterData.monHocStatus;
+                                if (monHocStatus) {
+                                  Object.keys(monHocStatus).forEach(function(maMH) {
+                                    const status = monHocStatus[maMH];
+                              %>
+                                <tr>
+                                  <td><%= maMH %></td>
+                                  <td class="<%= status.status === 'dat' ? 'success' : (status.status === 'khongdat' ? 'failure' : 'not-attempted') %>">
+                                    <%= status.status === 'dat' ? 'Đạt' : (status.status === 'khongdat' ? 'Không đạt' : 'Chưa học') %>
+                                  </td>
+                                  <td><%= status.trongSo %></td>
+                                </tr>
+                              <% 
+                                  });
+                                }
+                              %>
+                            </tbody>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  <% 
+                      }
+                    });
+                  %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% 
+            }
+          });
+        %>
+      </div>
+      
+      <!-- Script để toggle hiển thị chi tiết môn học -->
+      <script>
+        function toggleMonHocDetails(id) {
+          const content = document.getElementById('monhoc-details-' + id);
+          if (content.style.display === 'none') {
+            content.style.display = 'block';
+          } else {
+            content.style.display = 'none';
+          }
+        }
+      </script>
+    <% } %>
+  </div>
+<% } %>
+
+
+<!-- Phần 7: Tiến trình tất cả sinh viên -->
+<% if (locals.allStudentsProgressMode) { %>
+  <div class="section">
+    <h2 class="section-title">Theo dõi tiến trình PLO của tất cả sinh viên</h2>
+    
+    <!-- Form tìm kiếm mã khối -->
+    <form action="/searchAllStudentsProgress" method="POST">
+      <div class="form-group">
+        <label for="maKhoi">Nhập Mã Khối:</label>
+        <input type="text" id="maKhoi" name="maKhoi" value="<%= locals.maKhoiQuery || '' %>" required>
+      </div>
+      
+      <button type="submit" class="btn-search">Tìm kiếm</button>
+    </form>
+
+    <!-- Hiển thị lỗi nếu có -->
+    <% if (locals.error) { %>
+      <div class="error">
+        <%= error %>
+      </div>
+    <% } %>
+
+    <!-- Kết quả theo dõi tiến trình của tất cả sinh viên -->
+    <% if (locals.allStudentsProgress && locals.allStudentsProgress.length > 0) { %>
+      <div class="results">
+        <div class="summary-box">
+          <h3>Thông tin tìm kiếm</h3>
+          <p><strong>Mã khối:</strong> <%= maKhoiQuery %></p>
+          <p><strong>Số sinh viên hiển thị:</strong> <%= displayedStudents %></p>
+        </div>
+        
+        <!-- Tab điều hướng giữa các PLO -->
+        <div class="plo-tabs">
+          <% for (const plo in ploGroups) { %>
+            <button class="plo-tab <%= plo === Object.keys(ploGroups)[0] ? 'active' : '' %>" 
+                    onclick="openPLOTab(event, 'plo-<%= plo %>')">
+              <%= plo %>
+            </button>
+          <% } %>
+        </div>
+        
+        <!-- Nội dung cho từng PLO -->
+        <% for (const plo in ploGroups) { %>
+          <div id="plo-<%= plo %>" class="plo-tab-content" 
+               style="display: <%= plo === Object.keys(ploGroups)[0] ? 'block' : 'none' %>;">
+            <h3>PLO: <%= plo %></h3>
+            
+            
+            <table class="student-table">
+              <thead>
+                <tr>
+                  <th>Mã SV</th>
+                  <th>Họ Tên</th>
+                  <% if (locals.namHKList && locals.namHKList.length > 0) { %>
+                    <% namHKList.forEach(function(namHKObj) { %>
+                      <th><%= namHKObj.formatted %></th>
+                    <% }); %>
+                  <% } %>
+                </tr>
+              </thead>
+              <tbody>
+                <% locals.allStudentsProgress.forEach(function(studentData) { %>
+                  <tr>
+                    <td><%= studentData.sinhVien.MaSV %></td>
+                    <td><%= studentData.sinhVien.HoTen %></td>
+                    <% if (locals.namHKList && locals.namHKList.length > 0) { %>
+                      <% namHKList.forEach(function(namHKObj) { %>
+                        <td>
+                          <% 
+                            const semesterData = (studentData.ploProgress[plo] && 
+                                               studentData.ploProgress[plo].semesters && 
+                                               studentData.ploProgress[plo].semesters[namHKObj.value]) ? 
+                                               studentData.ploProgress[plo].semesters[namHKObj.value] : null;
+                          %>
+                          
+                          <% if (semesterData) { %>
+                            <div class="progress-bar-container">
+                              <% if (semesterData.allAchieved) { %>
+                                <!-- Tất cả đều đạt - hiển thị màu vàng -->
+                                <div class="progress-bar-full" style="width: 100%;"></div>
+                              <% } else { %>
+                                <!-- Hiển thị 3 màu theo thứ tự: xanh lá, xám, trắng -->
+                                <% if (semesterData.achievedPercent > 0) { %>
+                                  <div class="progress-bar-achieved" style="width: <%= semesterData.achievedPercent %>%;"></div>
+                                <% } %>
+                                <% if (semesterData.notAchievedPercent > 0) { %>
+                                  <div class="progress-bar-not-achieved" style="width: <%= semesterData.notAchievedPercent %>%;"></div>
+                                <% } %>
+                                <% if (semesterData.notAttemptedPercent > 0) { %>
+                                  <div class="progress-bar-not-attempted" style="width: <%= semesterData.notAttemptedPercent %>%;"></div>
+                                <% } %>
+                              <% } %>
+                            </div>
+                            <div class="progress-ratio"><%= semesterData.achievedRatio %></div>
+                          <% } else { %>
+                            <div class="no-data">Không có dữ liệu</div>
+                          <% } %>
+                        </td>
+                      <% }); %>
+                    <% } %>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
+      
+      <!-- CSS cho tab và hiển thị -->
+      <style>
+        .plo-tabs {
+          overflow: hidden;
+          border: 1px solid #ccc;
+          background-color: #f1f1f1;
+          margin-top: 20px;
+          border-radius: 4px 4px 0 0;
+        }
+        
+        .plo-tab {
+          background-color: #4CAF50; /* Màu xanh lá cho các tab chưa được chọn */
+          color: white;
+          float: left;
+          border: none;
+          outline: none;
+          cursor: pointer;
+          padding: 10px 15px;
+          transition: 0.3s;
+          font-size: 15px;
+          margin-right: 2px;
+        }
+        
+        .plo-tab:hover {
+          background-color: #3e8e41; /* Đậm hơn khi hover */
+        }
+        
+        .plo-tab.active {
+          background-color: #3498db; /* Màu xanh dương cho tab đang chọn */
+          color: white;
+        }
+        
+        .plo-tab-content {
+          display: none;
+          padding: 20px;
+          border: 1px solid #ccc;
+          border-top: none;
+          border-radius: 0 0 4px 4px;
+          background-color: #fff;
+        }
+        
+        .progress-ratio {
+          text-align: center;
+          font-size: 12px;
+          margin-top: 3px;
+        }
+        
+        .no-data {
+          color: #999;
+          font-style: italic;
+          text-align: center;
+          font-size: 12px;
+        }
+        
+        .progress-bar-not-attempted {
+          height: 100%;
+          background-color: #ffffff; /* Màu trắng cho phần chưa học */
+        }
+        
+        .progress-bar-full {
+          height: 100%;
+          background-color: #FFD700; /* Màu vàng khi tất cả đều đạt */
+        }
+      </style>
+      
+      <!-- Script để xử lý chuyển tab -->
+      <script>
+        function openPLOTab(evt, ploId) {
+          // Ẩn tất cả nội dung tab
+          var tabContents = document.getElementsByClassName("plo-tab-content");
+          for (var i = 0; i < tabContents.length; i++) {
+            tabContents[i].style.display = "none";
+          }
+          
+          // Loại bỏ class "active" khỏi tất cả các tab
+          var tabs = document.getElementsByClassName("plo-tab");
+          for (var i = 0; i < tabs.length; i++) {
+            tabs[i].className = tabs[i].className.replace(" active", "");
+          }
+          
+          // Hiển thị tab hiện tại và thêm class "active"
+          document.getElementById(ploId).style.display = "block";
+          evt.currentTarget.className += " active";
+        }
+      </script>
+    <% } %>
+  </div>
+<% } %>
+    </div>
+</body>
+</html>
