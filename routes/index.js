@@ -9,6 +9,7 @@ const sinhVienTheoKhoiController = require('../controllers/sinhVienTheoKhoiContr
 const ploProgressController = require('../controllers/ploProgressController');
 const allStudentsProgressController = require('../controllers/allStudentsProgressController');
 const diagramController = require('../controllers/diagramController');
+const tyTrongChuanController = require('../controllers/tyTrongChuanController');
 
 
 // Trang tìm kiếm tiêu chí
@@ -42,8 +43,8 @@ router.post('/searchAllStudentsProgress', allStudentsProgressController.searchAl
 router.get('/diagram', diagramController.getDiagramForm);
 router.post('/generateDiagram', diagramController.generateDiagram);
 
-// Routes cho cacha
-// router.post ('/clearCache', diagramController.clearCache);
-// router.get ('/cacheStats', diagramController.getCacheStats);
+// Thêm vào bảng tỷ trọng chuẩn
+router.get('/getTyTrongChuanForm', require('../controllers/tyTrongChuanController').getTyTrongChuanForm);
+router.post('/searchTyTrongChuan', require('../controllers/tyTrongChuanController').searchTyTrongChuan);
 
 module.exports = router;
