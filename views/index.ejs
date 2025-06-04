@@ -522,6 +522,7 @@
     <a href="/ploProgress" class="nav-link">Tiến trình PLO</a>
     <a href="/allStudentsProgress" class="nav-link">Theo dõi tiến trình tất cả sinh viên</a> 
     <a href="/diagram" class="nav-link">Biểu đồ hoàn thành PLO của khối</a>
+    <a href="/getTyTrongChuanForm" class="nav-link">Tỷ trọng chuẩn PLO</a>
   </div>
   
   <div class="container">
@@ -1461,7 +1462,7 @@ function isPLOFullyCompleted(ploData) {
               📊 <strong>Thống kê tích lũy đến ${formatNamHKJS(upToNamHK)}:</strong> 
               ${soMonCoDiem}/${tongSoMon} môn có điểm (${percentComplete.toFixed(1)}%) 
               | Điểm TB: ${diemTrungBinhThang10.toFixed(2)}/${diemChuan.toFixed(1)}
-              | Chi tiết tính toán: ${tongDiemTichLuy.toFixed(2)}/${diemChuanCanDat.toFixed(2)}
+               <! | Chi tiết tính toán: ${tongDiemTichLuy.toFixed(2)}/${diemChuanCanDat.toFixed(2)}  -->
               | <span class="${isFullyCompleted ? 'completed' : (datChua ? 'success' : 'failure')}">
                 ${isFullyCompleted ? '🎉 HOÀN THÀNH' : (datChua ? '✅ ĐẠT' : '❌ CHƯA ĐẠT')}
               </span>
@@ -3368,6 +3369,436 @@ function isPLOFullyCompleted(ploData) {
       });
       </script>
     <% } %>
+  </div>
+<% } %>
+
+
+<!-- Phần 9: Tỷ trọng chuẩn PLO -->
+<% if (locals.tyTrongChuanMode) { %>
+  <div class="ty-trong-chuan-container">
+    <h2>📊 Phân tích tỷ trọng chuẩn PLO</h2>
+    
+    <!-- Form tìm kiếm -->
+    <form action="/searchTyTrongChuan" method="POST" class="search-form">
+      <div class="form-group">
+        <label for="maKhoi">Mã Khối:</label>
+        <input type="text" id="maKhoi" name="maKhoi" value="<%= locals.maKhoiQuery || '' %>" required>
+        <button type="submit">Phân tích</button>
+      </div>
+    </form>
+
+    <!-- Status và Stats -->
+    <% if (locals.cacheStatus) { %>
+      <div class="status-info">
+        <%= cacheStatus %>
+        <% if (locals.processingTime) { %>
+          (<%= processingTime %>ms)
+        <% } %>
+      </div>
+    <% } %>
+
+    <!-- Error -->
+    <% if (locals.error) { %>
+      <div class="error-message"><%= error %></div>
+    <% } %>
+
+    <!-- Results -->
+    <% if (locals.tyTrongChuanResults && locals.tyTrongChuanResults.length > 0) { %>
+      <!-- Summary Info -->
+      <div class="results-container">
+        <h3>📈 Kết quả phân tích khối <%= maKhoiQuery %></h3>
+        
+        <div class="summary-info">
+          <div class="info-item">
+            <span class="info-label">Tổng số PLO:</span>
+            <span class="info-value"><%= ploList.length %></span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Số học kỳ:</span>
+            <span class="info-value"><%= tyTrongChuanResults.length %></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✅ SORT PLO ĐÚNG THỨ TỰ -->
+      <% 
+      const sortedPLOList = ploList.sort((a, b) => {
+        const getNumberFromPLO = (plo) => {
+          const match = plo.match(/\d+/);
+          return match ? parseInt(match[0]) : 0;
+        };
+        const numA = getNumberFromPLO(a);
+        const numB = getNumberFromPLO(b);
+        return numA - numB;
+      });
+      %>
+
+      <!-- ✅ DYNAMIC CSS CHO TỪNG PLO GROUP -->
+<style id="dynamic-plo-styles">
+  <% sortedPLOList.forEach(function(plo, index) { %>
+  /* ✅ CHỈ VIỀN TRÁI CHO CỘT ĐẦU TIÊN CỦA MỖI PLO */
+  .plo-group-<%= index %>:nth-child(<%= 3 + index * 2 %>) {
+    border-left: 2px solid #000 !important;
+  }
+  
+  /* ✅ VIỀN PHẢI CHO CỘT CUỐI CÙNG CỦA MỖI PLO */
+  .plo-group-<%= index %>:nth-child(<%= 4 + index * 2 %>) {
+    border-right: 2px solid #000 !important;
+  }
+  <% }); %>
+  
+  /* ✅ VIỀN PHẢI CHO CỘT CUỐI CÙNG CỦA PLO CUỐI */
+  .plo-group-<%= sortedPLOList.length - 1 %>:last-child {
+    border-right: 2px solid #000 !important;
+  }
+</style>
+
+      <!-- ✅ BẢNG FULL WIDTH - CÓ VIỀN PLO -->
+      <div class="full-width-table-wrapper">
+        <table class="ty-trong-chuan-table">
+          <thead>
+            <tr>
+              <th rowspan="2" class="fixed-col">Học kỳ</th>
+              <th rowspan="2" class="fixed-col">Tổng SV</th>
+              <% sortedPLOList.forEach(function(plo, index) { %>
+                <th colspan="2" class="plo-header plo-group-<%= index %>"><%= plo %></th>
+              <% }); %>
+            </tr>
+            <tr>
+              <% sortedPLOList.forEach(function(plo, index) { %>
+                <th class="plo-subheader plo-group-<%= index %>">SV đạt / Tỷ lệ</th>
+                <th class="plo-subheader plo-group-<%= index %>">Yêu cầu</th>
+              <% }); %>
+            </tr>
+          </thead>
+          <tbody>
+            <% tyTrongChuanResults.forEach(function(semesterResult) { %>
+              <tr>
+                <td class="semester-cell">
+                  <strong><%= semesterResult.namHKFormatted %></strong>
+                </td>
+                <td class="total-students-cell">
+                  <%= semesterResult.totalStudents %>
+                </td>
+                <% sortedPLOList.forEach(function(plo, index) { %>
+                  <% 
+                    const ploResult = semesterResult.ploResults.find(pr => pr.plo === plo);
+                    const hasData = ploResult && ploResult.hasStandard;
+                  %>
+                  <td class="plo-result-cell plo-group-<%= index %>">
+                    <% if (hasData) { %>
+                      <div class="result-numbers">
+                        <%= ploResult.studentsMetStandard %>/<%= semesterResult.totalStudents %>
+                      </div>
+                      <div class="result-percentage">
+                        <span class="percentage-highlight"><%= ploResult.percentage %>%</span>
+                      </div>
+                    <% } else { %>
+                      <span class="no-data-text">-</span>
+                    <% } %>
+                  </td>
+                  <td class="standard-cell plo-group-<%= index %>">
+                    <% if (hasData) { %>
+                      <span class="percentage-highlight"><%= ploResult.standardValue %>%</span>
+                    <% } else { %>
+                      <span class="no-data-text">-</span>
+                    <% } %>
+                  </td>
+                <% }); %>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+
+      
+    <% } %>
+  
+
+  <!-- ✅ CSS STATIC - KHÔNG DÙNG EJS LOOP -->
+  <style>
+    .ty-trong-chuan-container {
+      max-width: 100%;
+      margin: 20px auto;
+      padding: 20px;
+    }
+
+    .search-form {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border: 1px solid #e9ecef;
+    }
+
+    .form-group {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .form-group label {
+      font-weight: bold;
+      min-width: 80px;
+      color: #495057;
+    }
+
+    .form-group input {
+      padding: 10px 15px;
+      border: 2px solid #ced4da;
+      border-radius: 6px;
+      flex: 1;
+      max-width: 200px;
+      font-size: 14px;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
+    }
+
+    .form-group button {
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #007bff, #0056b3);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+
+    .form-group button:hover {
+      background: linear-gradient(135deg, #0056b3, #004085);
+      transform: translateY(-1px);
+    }
+
+    .status-info {
+      background: #d1ecf1;
+      color: #0c5460;
+      padding: 12px 15px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      border-left: 4px solid #bee5eb;
+      font-size: 14px;
+    }
+
+    .error-message {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 12px 15px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      border-left: 4px solid #f5c6cb;
+    }
+
+    .results-container {
+      background: white;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+
+    .summary-info {
+      display: flex;
+      gap: 30px;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 6px;
+    }
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-label {
+      font-weight: normal;
+      color: #6c757d;
+    }
+
+    .info-value {
+      font-weight: bold;
+      color: #495057;
+      font-size: 16px;
+    }
+
+    /* ✅ BẢNG FULL WIDTH */
+    .full-width-table-wrapper {
+      width: 100vw;
+      position: relative;
+      left: 50%;
+      right: 50%;
+      margin-left: -50vw;
+      margin-right: -50vw;
+      overflow-x: visible;
+      margin-bottom: 20px;
+      background: white;
+      padding: 10px 0;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .ty-trong-chuan-table {
+      width: 95%;
+      max-width: 1400px;
+      margin: 0 auto;
+      border-collapse: collapse;
+      border: 2px solid #000; /* ✅ VIỀN NGOÀI ĐEN DÀY */
+      font-size: 9px;
+      background: white;
+    }
+
+    .ty-trong-chuan-table th,
+    .ty-trong-chuan-table td {
+      border: 1px solid #dee2e6;
+      padding: 3px 2px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* ✅ CỘT CỐ ĐỊNH (NĂM VÀ TỔNG SV) */
+    .fixed-col {
+      background: #e9ecef !important;
+      color: #495057;
+      font-weight: bold;
+      font-size: 8px;
+      border-right: 2px solid #000 !important; /* ✅ VIỀN PHẢI ĐEN DÀY */
+    }
+
+    .semester-cell {
+      background: #f8f9fa !important;
+      font-weight: bold;
+      min-width: 60px;
+      font-size: 10px; /* ✅ TĂNG FONT CHỮ NĂM */
+      border-right: 2px solid #000 !important; /* ✅ VIỀN PHẢI ĐEN DÀY */
+    }
+
+    .total-students-cell {
+      background: #f8f9fa !important;
+      font-weight: bold;
+      color: #495057;
+      min-width: 35px;
+      font-size: 9px; /* ✅ TĂNG FONT SỐ SV */
+      border-right: 2px solid #000 !important; /* ✅ VIỀN PHẢI ĐEN DÀY */
+    }
+
+    /* ✅ HEADER PLO */
+    .plo-header {
+      background: #d1ecf1 !important;
+      color: #0c5460;
+      font-weight: bold;
+      font-size: 9px; /* ✅ TĂNG FONT TÊN PLO */
+    }
+
+    .plo-subheader {
+      background: #e9ecef !important;
+      color: #495057;
+      font-weight: bold;
+      font-size: 8px;
+    }
+
+    /* ✅ CỘT DỮ LIỆU PLO */
+    .plo-result-cell,
+    .standard-cell {
+      background: white !important;
+      color: #212529;
+      min-width: 60px;
+    }
+
+    .result-numbers {
+      font-weight: bold;
+      font-size: 8px;
+    }
+
+    .result-percentage {
+      font-size: 7px;
+      margin-top: 1px;
+      color: #6c757d;
+    }
+
+    /* ✅ CHỈ % TO LÊN */
+    .percentage-highlight {
+      font-size: 12px !important;
+      font-weight: bold !important;
+      color: #007bff !important;
+    }
+
+    .no-data-text {
+      color: #adb5bd;
+      font-style: italic;
+      font-size: 8px;
+    }
+
+    .note {
+      margin-top: 15px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border: 1px solid #e9ecef;
+    }
+
+    .note h4 {
+      margin-bottom: 10px;
+      color: #495057;
+      font-size: 14px;
+    }
+
+    .note p {
+      margin: 0;
+      font-size: 13px;
+      color: #6c757d;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .ty-trong-chuan-table {
+        font-size: 8px;
+        border: 1px solid #000;
+      }
+      
+      .ty-trong-chuan-table th,
+      .ty-trong-chuan-table td {
+        padding: 2px 1px;
+      }
+      
+      .semester-cell {
+        font-size: 9px;
+      }
+      
+      .plo-header {
+        font-size: 8px;
+      }
+      
+      /* ✅ VIỀN MOBILE */
+      .fixed-col,
+      .semester-cell,
+      .total-students-cell {
+        border-right: 1px solid #000 !important;
+      }
+      
+      .summary-info {
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .result-numbers {
+        font-size: 7px;
+      }
+      
+      .result-percentage {
+        font-size: 6px;
+      }
+      
+      .percentage-highlight {
+        font-size: 10px !important;
+      }
+    }
+  </style>
   </div>
 <% } %>
     </div>
