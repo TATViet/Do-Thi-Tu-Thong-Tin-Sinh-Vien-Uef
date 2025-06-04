@@ -1,3 +1,4 @@
+// models/ChuongTrinh.js
 const mongoose = require('mongoose');
 
 const ChuongTrinhSchema = new mongoose.Schema({
@@ -7,6 +8,7 @@ const ChuongTrinhSchema = new mongoose.Schema({
     HeDaoTao: String,
     MaDV: String,
     HocKyVao: Number,
+    DiemChon: Number,
     NgayTao: { type: Date, default: Date.now }
 });
 

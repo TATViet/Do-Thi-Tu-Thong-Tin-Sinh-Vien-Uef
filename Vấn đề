@@ -1,0 +1,5 @@
+Model hiendiensvs:
+Sử lí Các Sinh Viên bảo lưu (2) và nghỉ học(3) ->(done) {đã sử lý ở trong diagram, trong ploProgress và AllStudent thì không cần}
+tạo lập dữ liệu cho các Sinh Viên bắt đầu từ năm nhập học ->(ko cần thiết) {Diagram ko cần}
+
+Lấy tổng điểm x Trọng số => trung bình

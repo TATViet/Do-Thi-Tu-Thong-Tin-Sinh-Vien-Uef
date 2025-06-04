@@ -4,6 +4,36 @@ const TieuChiDauRa = require('../models/tieuChiDauRa');
 const MonHocTieuChi = require('../models/MonHocTieuChi');
 const HienDienSV = require('../models/HienDienSV');
 const DiemSinhVien = require('../models/DiemSinhVien');
+const ChuongTrinh = require('../models/ChuongTrinh');
+const cache = new Map();
+
+// Lưu dữ liệu vào cache
+function getCacheKey(maKhoi) {
+  return `cache_${maKhoi}`;
+}
+
+function saveToCache(maKhoi, data) {
+  const key = getCacheKey(maKhoi);
+  const cacheData = {
+    timestamp: Date.now(),
+    data: data
+  };
+  cache.set(key, cacheData);
+  console.log(`💾 Đã lưu cache cho mã khối ${maKhoi}`);
+}
+
+function loadFromCache(maKhoi) {
+  const key = getCacheKey(maKhoi);
+  const cacheData = cache.get(key);
+  
+  if (cacheData) {
+    const ageMinutes = (Date.now() - cacheData.timestamp) / (1000 * 60);
+    console.log(`📁 Tải cache cho mã khối ${maKhoi} (${ageMinutes.toFixed(1)} phút trước)`);
+    return cacheData.data;
+  }
+  
+  return null;
+}
 
 // Hàm để chuyển đổi số NamHK sang định dạng dễ đọc
 function formatNamHK(namHK) {
@@ -13,7 +43,7 @@ function formatNamHK(namHK) {
   return `năm ${nam} HK${hocKy}`;
 }
 
-// Hàm chuyển đổi HK3 thành HK1 năm sau
+// ✅ Hàm chuyển đổi HK3 thành HK1 năm sau
 function normalizeNamHK(namHK) {
   const namHKStr = namHK.toString();
   const nam = parseInt(namHKStr.substring(0, 4));
@@ -27,40 +57,105 @@ function normalizeNamHK(namHK) {
   return namHK;
 }
 
-// Hàm kiểm tra tất cả các tiêu chí có đạt không
-function checkAllPassed(diem, tieuChiList) {
-  let allPassed = true;
-  
-  for (const tc of tieuChiList) {
-    let passed = false;
-    
-    // Kiểm tra theo loại điểm
-    switch (tc.loaiDiem) {
-      case 'CK':
-        passed = diem.CuoiKy !== undefined && diem.CuoiKy >= tc.diemChon;
-        break;
-      case 'GK':
-        passed = diem.GiuaKy !== undefined && diem.GiuaKy >= tc.diemChon;
-        break;
-      case 'QT':
-        passed = diem.QuaTrinh !== undefined && diem.QuaTrinh >= tc.diemChon;
-        break;
-      default:
-        passed = diem.DiemSoHP !== undefined && diem.DiemSoHP >= tc.diemChon;
-    }
-    
-    if (!passed) {
-      allPassed = false;
-      break;
+async function getAllNamHKRange() {
+  try {
+    const allNamHK = await DiemSinhVien.distinct('NamHK');
+    const sortedNamHK = allNamHK.map(nk => parseInt(nk)).sort((a, b) => a - b);
+    return {
+      min: sortedNamHK[0],
+      max: sortedNamHK[sortedNamHK.length - 1]
+    };
+  } catch (error) {
+    console.error('Error getting NamHK range:', error);
+    return { min: 20221, max: 20241 }; // fallback
+  }
+}
+// Thêm function duplicate logic
+function duplicateAndFillSemesters(ploData, namHKRange) {
+  if (!ploData.semesters) {
+    ploData.semesters = {};
+  }
+  // Tạo array tất cả các semester cần có
+  const allSemesters = [];
+  for (let nam = Math.floor(namHKRange.min / 10); nam <= Math.floor(namHKRange.max / 10); nam++) {
+    for (let hk = 1; hk <= 3; hk++) {
+      const namHK = parseInt(`${nam}${hk}`);
+      if (namHK >= namHKRange.min && namHK <= namHKRange.max) {
+        allSemesters.push(namHK);
+      }
     }
   }
+  const sortedSemesters = allSemesters.sort((a, b) => a - b);
+  const existingSemesters = Object.keys(ploData.semesters).map(s => parseInt(s)).sort((a, b) => a - b);
+  // Nếu không có semester nào, return
+  if (existingSemesters.length === 0) {
+    return ploData;
+  }
+  // Tạo template từ semester đầu tiên có dữ liệu
+  const firstExistingSemester = existingSemesters[0];
+  const template = JSON.parse(JSON.stringify(ploData.semesters[firstExistingSemester]));
   
-  return allPassed;
+  // Reset điểm về 0 cho template
+  template.tongDiemSinhVien = 0;
+  template.trangThaiDat = false;
+  template.achievedPercent = 0;
+  template.notAttemptedPercent = 100;
+  template.achievedRatio = `0/${template.tongTrongSoLyThuyet || 0}`;
+  if (template.monHocStatus) {
+    Object.keys(template.monHocStatus).forEach(maMH => {
+      template.monHocStatus[maMH].diem = null;
+      template.monHocStatus[maMH].diemCoTrongSo = 0;
+      template.monHocStatus[maMH].status = 'chua_hoc';
+    });
+  }
+  // Fill tất cả các semester
+  for (const namHK of sortedSemesters) {
+    if (!ploData.semesters[namHK]) {
+      // Tìm semester gần nhất có dữ liệu trước đó
+      let lastValidSemester = null;
+      for (let i = existingSemesters.length - 1; i >= 0; i--) {
+        if (existingSemesters[i] < namHK) {
+          lastValidSemester = existingSemesters[i];
+          break;
+        }
+      }
+      if (lastValidSemester) {
+        // Duplicate từ semester trước
+        ploData.semesters[namHK] = JSON.parse(JSON.stringify(ploData.semesters[lastValidSemester]));
+      } else {
+        // Sử dụng template rỗng
+        ploData.semesters[namHK] = JSON.parse(JSON.stringify(template));
+      }
+    }
+  }
+  return ploData;
+}
+
+// Hàm tính điểm chuẩn có trọng số cho PLO
+function tinhDiemChuanCoTrongSo(diemChon, tongTrongSoLyThuyet) {
+  return diemChon * tongTrongSoLyThuyet;
+}
+
+// ✅ Hàm lấy điểm theo loại điểm
+function getDiemTheoLoaiDiem(diemSinhVien, loaiDiem) {
+  let diem;
+  switch(loaiDiem) {
+    case 'QT': diem = diemSinhVien.QuaTrinh; break;
+    case 'GK': diem = diemSinhVien.GiuaKy; break;
+    case 'CK': diem = diemSinhVien.CuoiKy; break;
+    default: diem = diemSinhVien.CuoiKy; break;
+  }
+  
+  if (diem === null || diem === undefined || diem === '') {
+    return null;
+  }
+  
+  const diemSo = Number(diem);
+  return isNaN(diemSo) ? null : diemSo;
 }
 
 exports.getPLOProgressForm = async (req, res) => {
   try {
-    // Lấy danh sách năm học kỳ để hiển thị trong dropdown (nếu cần)
     const namHKList = await DiemSinhVien.distinct('NamHK');
     namHKList.sort((a, b) => b - a);
     
@@ -91,115 +186,459 @@ exports.getPLOProgressForm = async (req, res) => {
   }
 };
 
+
 exports.searchPLOProgress = async (req, res) => {
+  console.log('=== CHECK DATABASE ===');
+const allChuongTrinh = await ChuongTrinh.find({});
+// console.log('Tất cả chương trình trong DB:', allChuongTrinh.map(ct => ({
+//   MaKhoi: ct.MaKhoi,
+//   DiemChon: ct.DiemChon
+// })));
+// console.log('======================');
   try {
-    const maKhoi = req.body.maKhoi;
-    const maSV = req.body.maSV; // Thêm field này để nhận mã SV từ form
+    const { maKhoi, maSV } = req.body;
     
-    // Lấy danh sách sinh viên thuộc khối để hiển thị
-    let sinhVienList = [];
-    let ploProgressResults = null;
-    let uniqueSinhVienList = []; // Thêm biến này
-    let studentInfo = null; //có thể xóa cái này
+    if (!maKhoi) {
+      return res.render('index', { 
+        title: 'Theo dõi tiến trình PLO của sinh viên',
+        ploProgressMode: true, 
+        error: 'Vui lòng nhập mã khối' 
+      });
+    }
+
+    // Lấy range NamHK từ database
+    const namHKRange = await getAllNamHKRange();
+    //('NamHK Range:', namHKRange);
+
+    // Tìm sinh viên trong mã khối
+    const sinhVienInKhoi = await HienDienSV.find({ MaKhoi: maKhoi });
     
-    if (maKhoi) {
-      // Lấy danh sách sinh viên thuộc khối để hiển thị trong danh sách
-      sinhVienList = await HienDienSV.find({ MaKhoi: maKhoi }).lean();
-      
-      if (!sinhVienList || sinhVienList.length === 0) {
-        return res.render('index', {
-          title: 'Kết quả theo dõi tiến trình PLO',
-          ploProgressMode: true,
-          maKhoiQuery: maKhoi,
-          error: `Không tìm thấy sinh viên nào thuộc mã khối "${maKhoi}".`,
-          formatNamHK: formatNamHK,
-          showSearchSection: false,
-          sinhVienSearchMode: false,
-          diemSinhVienSearchMode: false
-        });
+    if (!sinhVienInKhoi || sinhVienInKhoi.length === 0) {
+      return res.render('index', {
+        title: 'Theo dõi tiến trình PLO của sinh viên',
+        ploProgressMode: true,
+        error: `Không tìm thấy sinh viên nào trong mã khối ${maKhoi}`
+      });
+    }
+
+    if (!maSV) {
+      // Chỉ hiển thị danh sách sinh viên
+      return res.render('index', {
+        title: 'Theo dõi tiến trình PLO của sinh viên',
+        ploProgressMode: true,
+        maKhoiQuery: maKhoi,
+        sinhVienOptions: sinhVienInKhoi
+      });
+    }
+
+    // Kiểm tra sinh viên có trong khối không
+    const sinhVienInKhoiCheck = sinhVienInKhoi.find(sv => sv.MaSV === maSV);
+    if (!sinhVienInKhoiCheck) {
+      return res.render('index', {
+        title: 'Theo dõi tiến trình PLO của sinh viên',
+        ploProgressMode: true,
+        maKhoiQuery: maKhoi,
+        sinhVienOptions: sinhVienInKhoi,
+        selectedMaSV: maSV,
+        error: `Sinh viên ${maSV} không thuộc mã khối ${maKhoi}`
+      });
+    }
+
+    // Lấy thông tin chương trình và điểm chuẩn
+    const chuongTrinh = await ChuongTrinh.findOne({ MaKhoi: maKhoi });
+    if (!chuongTrinh) {
+      return res.render('index', {
+        title: 'Theo dõi tiến trình PLO của sinh viên',
+        ploProgressMode: true,
+        maKhoiQuery: maKhoi,
+        sinhVienOptions: sinhVienInKhoi,
+        selectedMaSV: maSV,
+        error: `Không tìm thấy chương trình cho mã khối ${maKhoi}`
+      });
+    }
+
+    const diemChon = chuongTrinh.DiemChon;
+// console.log('=== DEBUG DIEM CHON ===');
+// console.log('MaKhoi tìm kiếm:', maKhoi);
+// console.log('ChuongTrinh tìm được:', chuongTrinh);
+// console.log('chuongTrinh.DiemChon:', chuongTrinh.DiemChon);
+// console.log('diemChon value:', diemChon);
+// console.log('diemChon type:', typeof diemChon);
+// console.log('=======================');
+
+    // Lấy danh sách PLO và tiêu chí
+    const tieuChiList = await TieuChiDauRa.find({ MaKhoi: maKhoi });
+    const ploGroups = {};
+    
+    tieuChiList.forEach(tc => {
+      if (!ploGroups[tc.MaPLO]) {
+        ploGroups[tc.MaPLO] = [];
       }
+      ploGroups[tc.MaPLO].push(tc.MaTieuChi);
+    });
+
+    //console.log('PLO Groups found:', Object.keys(ploGroups));
+
+    // Lấy thông tin môn học và tiêu chí
+    const monHocTieuChiList = await MonHocTieuChi.find({
+      MaTieuChi: { $in: tieuChiList.map(tc => tc.MaTieuChi) }
+    });
+
+    //console.log(`Found ${monHocTieuChiList.length} môn học tiêu chí`);
+
+    // Lấy điểm sinh viên
+    const diemSinhVienList = await DiemSinhVien.find({ MaSV: maSV });
+    //console.log(`Found ${diemSinhVienList.length} điểm records for ${maSV}`);
+
+    // Check cache
+    let cacheStatus = 'No cache';
+    const cacheKey = `plo_progress_${maSV}_${maKhoi}`;
+
+    // Tạo object sinh viên với thông tin cơ bản
+    const sinhVien = {
+      MaSV: maSV,
+      info: sinhVienInKhoiCheck,
+      plos: {}
+    };
+
+    // Tính toán cho từng PLO
+    for (const [plo, tieuChiIds] of Object.entries(ploGroups)) {
+      //console.log(`\n=== Processing PLO ${plo} ===`);
       
-      // Nếu có maSV, gọi hàm xử lý tiến trình PLO
-      if (maSV) {
-        const progressResults = await trackStudentPLOProgress(maKhoi, maSV);
+      // Lấy môn học liên quan đến PLO này
+      const relatedMonHoc = monHocTieuChiList.filter(mh => 
+        tieuChiIds.includes(mh.MaTieuChi)
+      );
+
+      //console.log(`Found ${relatedMonHoc.length} related subjects for PLO ${plo}`);
+
+      // Tính toán tổng trọng số lý thuyết
+      const tongTrongSoLyThuyet = relatedMonHoc.reduce((sum, mh) => sum + mh.TrongSo, 0);
+      
+      // Khởi tạo dữ liệu PLO
+      sinhVien.plos[plo] = {
+        tongTrongSoLyThuyet: tongTrongSoLyThuyet,
+        tongTrongSoSinhVienCo: 0,
+        tongDiemSinhVien: 0,
+        diemChuanCoTrongSo: 0, // Sẽ tính lại sau khi có tongTrongSoSinhVienCo
+        //diemChuanCoTrongSo: diemChon * tongTrongSoLyThuyet,
+        trangThaiDat: false,
+        semesters: {},
+        chiTietMonHoc: {}
+      };
+
+      // Xử lý từng môn học
+      for (const monHoc of relatedMonHoc) {
+        const maMH = monHoc.MaMH;
+        const trongSo = monHoc.TrongSo;
+        const loaiDiem = monHoc.LoaiDiem;
+
+        // Tìm điểm của sinh viên cho môn này
+        const diemRecords = diemSinhVienList.filter(d => d.MaMH === maMH);
         
-        if (progressResults.success) {
-          ploProgressResults = progressResults.data;
-          studentInfo = progressResults.data.sinhVien.info;
-        } else {
-          // Nếu có lỗi, hiển thị thông báo lỗi
-          return res.render('index', {
-            title: 'Kết quả theo dõi tiến trình PLO',
-            ploProgressMode: true,
-            maKhoiQuery: maKhoi,
-            sinhVienOptions: sinhVienList,
-            studentInfo: studentInfo,
-            selectedMaSV: maSV,
-            error: progressResults.error,
-            formatNamHK: formatNamHK,
-            showSearchSection: false,
-            sinhVienSearchMode: false,
-            diemSinhVienSearchMode: false
-          });
+        let bestDiem = null;
+        let bestNamHK = null;
+
+        // Chọn điểm cao nhất nếu có nhiều lần học
+        for (const diemRecord of diemRecords) {
+          let currentDiem = null;
+          
+          switch (loaiDiem) {
+            case 'QT':
+              currentDiem = diemRecord.QuaTrinh;
+              break;
+            case 'GK':
+              currentDiem = diemRecord.GiuaKy;
+              break;
+            case 'CK':
+              currentDiem = diemRecord.CuoiKy;
+              break;
+            default:
+              console.warn(`Unknown LoaiDiem: ${loaiDiem} for ${maMH}`);
+              continue;
+          }
+
+          if (currentDiem !== null && currentDiem !== undefined && !isNaN(currentDiem)) {
+            if (bestDiem === null || currentDiem > bestDiem) {
+              bestDiem = currentDiem;
+              bestNamHK = diemRecord.NamHK;
+            }
+          }
+        }
+
+        // Tính điểm có trọng số
+        const diemCoTrongSo = bestDiem !== null ? bestDiem * trongSo : 0;
+        const status = bestDiem !== null ? 'co_diem' : 'chua_hoc';
+
+        // Cập nhật tổng điểm PLO
+        if (bestDiem !== null) {
+          sinhVien.plos[plo].tongTrongSoSinhVienCo += trongSo;
+          sinhVien.plos[plo].tongDiemSinhVien += diemCoTrongSo;
+        }
+
+        // Lưu chi tiết môn học
+        sinhVien.plos[plo].chiTietMonHoc[maMH] = {
+          diem: bestDiem,
+          trongSo: trongSo,
+          diemCoTrongSo: diemCoTrongSo,
+          loaiDiem: loaiDiem,
+          namHK: bestNamHK,
+          status: status
+        };
+
+        // Lưu vào semester nếu có điểm
+        if (bestNamHK && bestDiem !== null) {
+          if (!sinhVien.plos[plo].semesters[bestNamHK]) {
+            sinhVien.plos[plo].semesters[bestNamHK] = {
+              tongTrongSoLyThuyet: 0,
+              tongTrongSoSinhVienCo: 0,
+              tongDiemSinhVien: 0,
+              diemChuanCoTrongSo: 0,
+              trangThaiDat: false,
+              achievedPercent: 0,
+              notAttemptedPercent: 100,
+              achievedRatio: '0/0',
+              monHocStatus: {},
+              originalData: true // Đánh dấu dữ liệu gốc
+            };
+          }
+
+          const semester = sinhVien.plos[plo].semesters[bestNamHK];
+          semester.tongTrongSoLyThuyet += trongSo;
+          semester.tongTrongSoSinhVienCo += trongSo;
+          semester.tongDiemSinhVien += diemCoTrongSo;
+          semester.diemChuanCoTrongSo = diemChon * semester.tongTrongSoLyThuyet;
+          semester.monHocStatus[maMH] = {
+            diem: bestDiem,
+            trongSo: trongSo,
+            diemCoTrongSo: diemCoTrongSo,
+            loaiDiem: loaiDiem,
+            status: status
+          };
         }
       }
+
+      // Tính trạng thái đạt PLO
+      sinhVien.plos[plo].trangThaiDat = sinhVien.plos[plo].tongDiemSinhVien >= sinhVien.plos[plo].diemChuanCoTrongSo;
+
+      // Tính toán cho các semester
+      for (const [namHK, semester] of Object.entries(sinhVien.plos[plo].semesters)) {
+        const achievedPercent = semester.tongTrongSoLyThuyet > 0 ? 
+          (semester.tongTrongSoSinhVienCo / semester.tongTrongSoLyThuyet) * 100 : 0;
+        
+        semester.achievedPercent = achievedPercent;
+        semester.notAttemptedPercent = 100 - achievedPercent;
+        semester.achievedRatio = `${semester.tongTrongSoSinhVienCo}/${semester.tongTrongSoLyThuyet}`;
+        semester.trangThaiDat = semester.tongDiemSinhVien >= semester.diemChuanCoTrongSo;
+        // Tính lại điểm chuẩn dựa trên trọng số thực tế
+        sinhVien.plos[plo].diemChuanCoTrongSo = diemChon * sinhVien.plos[plo].tongTrongSoSinhVienCo;
+        sinhVien.plos[plo].trangThaiDat = sinhVien.plos[plo].tongDiemSinhVien >= sinhVien.plos[plo].diemChuanCoTrongSo;
+      
+      // console.log(`\nPLO ${plo} Final Result:`);
+      // console.log(`- Điểm sinh viên: ${sinhVien.plos[plo].tongDiemSinhVien.toFixed(2)}`);
+      // console.log(`- Điểm chuẩn cần đạt: ${sinhVien.plos[plo].diemChuanCoTrongSo.toFixed(2)}`);
+      // console.log(`- Kết quả: ${sinhVien.plos[plo].trangThaiDat ? 'ĐẠT' : 'CHƯA ĐẠT'}`);
+      }
+
+      // 🔥 ÁP DỤNG LOGIC DUPLICATE
+      sinhVien.plos[plo] = duplicateAndFillSemesters(sinhVien.plos[plo], namHKRange);
     }
-    
-    // Lấy danh sách năm học kỳ để hiển thị trong dropdown
-    const namHKList = await DiemSinhVien.distinct('NamHK');
-    namHKList.sort((a, b) => b - a);
-    
-    const formattedNamHKList = namHKList.map(namHK => ({
-      value: namHK,
-      formatted: formatNamHK(namHK)
-    }));
-    
-    // Render trang với data phù hợp
+
+    //console.log(`\n=== Final Results for ${maSV} ===`);
+    //console.log('PLOs processed:', Object.keys(sinhVien.plos));
+
+    // Render kết quả
     res.render('index', {
-      title: 'Kết quả theo dõi tiến trình PLO',
+      title: 'Theo dõi tiến trình PLO của sinh viên',
       ploProgressMode: true,
-      namHKList: formattedNamHKList,
       maKhoiQuery: maKhoi,
-      sinhVienOptions: sinhVienList,
+      sinhVienOptions: sinhVienInKhoi,
       selectedMaSV: maSV,
-      ploProgressResults: ploProgressResults,
-      formatNamHK: formatNamHK,
-      showSearchSection: false,
-      sinhVienSearchMode: false,
-      diemSinhVienSearchMode: false
+      ploProgressResults: {
+        sinhVien: sinhVien,
+        diemChon: diemChon,
+        ploGroups: ploGroups
+      },
+      cacheStatus: cacheStatus
     });
-    
+
   } catch (error) {
     console.error('PLO progress search error:', error);
-    
-    // Lấy danh sách năm học kỳ để hiển thị trong dropdown
-    const namHKList = await DiemSinhVien.distinct('NamHK');
-    namHKList.sort((a, b) => b - a);
-    
-    const formattedNamHKList = namHKList.map(namHK => ({
-      value: namHK,
-      formatted: formatNamHK(namHK)
-    }));
-    
     res.render('index', {
-      title: 'Lỗi',
-      error: 'Đã xảy ra lỗi khi tìm kiếm tiến trình PLO: ' + error.message,
+      title: 'Theo dõi tiến trình PLO của sinh viên',
       ploProgressMode: true,
-      namHKList: formattedNamHKList,
-      maKhoiQuery: req.body.maKhoi,
-      formatNamHK: formatNamHK,
-      showSearchSection: false,
-      sinhVienSearchMode: false,
-      diemSinhVienSearchMode: false
+      error: 'Có lỗi xảy ra khi tìm kiếm: ' + error.message
     });
   }
 };
 
+// Thêm 2 helper functions này vào đầu file hoặc cuối file
+async function getAllNamHKRange() {
+  try {
+    const allNamHK = await DiemSinhVien.distinct('NamHK');
+    const sortedNamHK = allNamHK
+      .map(nk => parseInt(nk))
+      .filter(nk => !isNaN(nk))
+      .sort((a, b) => a - b);
+    
+    return {
+      min: sortedNamHK[0] || 20221,
+      max: sortedNamHK[sortedNamHK.length - 1] || 20241
+    };
+  } catch (error) {
+    console.error('Error getting NamHK range:', error);
+    return { min: 20221, max: 20241 }; // fallback
+  }
+}
+
+function duplicateAndFillSemesters(ploData, namHKRange) {
+  if (!ploData.semesters) {
+    ploData.semesters = {};
+  }
+
+  // Tạo array tất cả các semester cần có
+  const allSemesters = [];
+  const startYear = Math.floor(namHKRange.min / 10);
+  const endYear = Math.floor(namHKRange.max / 10);
+  
+  for (let nam = startYear; nam <= endYear; nam++) {
+    for (let hk = 1; hk <= 3; hk++) {
+      const namHK = parseInt(`${nam}${hk}`);
+      if (namHK >= namHKRange.min && namHK <= namHKRange.max) {
+        allSemesters.push(namHK);
+      }
+    }
+  }
+
+  const sortedSemesters = allSemesters.sort((a, b) => a - b);
+  const existingSemesters = Object.keys(ploData.semesters)
+    .map(s => parseInt(s))
+    .filter(s => !isNaN(s))
+    .sort((a, b) => a - b);
+
+  //console.log('All semesters needed:', sortedSemesters);
+  //console.log('Existing semesters:', existingSemesters);
+
+  // Nếu không có semester nào, return
+  if (existingSemesters.length === 0) {
+    return ploData;
+  }
+
+  // Fill missing semesters
+  for (const namHK of sortedSemesters) {
+    if (!ploData.semesters[namHK]) {
+      // Tìm semester gần nhất có dữ liệu trước đó
+      let sourceSemester = null;
+      for (let i = existingSemesters.length - 1; i >= 0; i--) {
+        if (existingSemesters[i] < namHK) {
+          sourceSemester = existingSemesters[i];
+          break;
+        }
+      }
+
+      if (sourceSemester) {
+        // Duplicate từ semester trước
+        //console.log(`Duplicating ${sourceSemester} -> ${namHK}`);
+        ploData.semesters[namHK] = JSON.parse(JSON.stringify(ploData.semesters[sourceSemester]));
+        ploData.semesters[namHK].originalData = false; // Đánh dấu là dữ liệu nhân bản
+      } else {
+        // Tìm semester đầu tiên để forward fill
+        const firstSemester = existingSemesters[0];
+        if (firstSemester > namHK) {
+          //console.log(`Forward filling ${firstSemester} -> ${namHK}`);
+          ploData.semesters[namHK] = JSON.parse(JSON.stringify(ploData.semesters[firstSemester]));
+          ploData.semesters[namHK].originalData = false; // Đánh dấu là dữ liệu nhân bản
+        }
+      }
+    }
+  }
+
+  return ploData;
+}
+
+async function trackStudentPLOProgressWithCache(maKhoi, maSV) {
+  const startTime = Date.now();
+  
+  try {
+    const cachedData = loadFromCache(maKhoi);
+    
+    if (cachedData && cachedData.students && cachedData.students[maSV]) {
+      const endTime = Date.now();
+      //console.log(`⚡ Lấy từ cache: ${endTime - startTime}ms`);
+      
+      return {
+        success: true,
+        data: {
+          sinhVien: cachedData.students[maSV],
+          ploGroups: cachedData.ploGroups,
+          namHKList: cachedData.namHKList
+        },
+        usedCache: true,
+        processingTime: endTime - startTime
+      };
+    }
+    
+    //console.log(`🔄 Tính toán mới cho khối ${maKhoi}`);
+    
+    const allStudents = await HienDienSV.find({ MaKhoi: maKhoi }).lean();
+    const cacheData = {
+      students: {},
+      ploGroups: null,
+      namHKList: null
+    };
+    
+    const requestedResult = await trackStudentPLOProgress(maKhoi, maSV);
+    
+    if (!requestedResult.success) {
+      return requestedResult;
+    }
+    
+    cacheData.students[maSV] = requestedResult.data.sinhVien;
+    cacheData.ploGroups = requestedResult.data.ploGroups;
+    cacheData.namHKList = requestedResult.data.namHKList;
+    
+    setImmediate(async () => {
+      console.log(`📦 Tính toán cache cho ${allStudents.length} sinh viên...`);
+      
+      for (const student of allStudents) {
+        if (student.MaSV !== maSV) {
+          try {
+            const result = await trackStudentPLOProgress(maKhoi, student.MaSV);
+            if (result.success) {
+              cacheData.students[student.MaSV] = result.data.sinhVien;
+            }
+          } catch (error) {
+            console.log(`❌ Lỗi khi cache SV ${student.MaSV}: ${error.message}`);
+          }
+        }
+      }
+      
+      saveToCache(maKhoi, cacheData);
+      //console.log(`✅ Đã cache xong ${Object.keys(cacheData.students).length} sinh viên`);
+    });
+    
+    const endTime = Date.now();
+    console.log(`✅ Hoàn thành: ${endTime - startTime}ms`);
+    
+    return {
+      success: true,
+      data: requestedResult.data,
+      usedCache: false,
+      processingTime: endTime - startTime
+    };
+    
+  } catch (error) {
+    console.error('❌ Lỗi:', error);
+    return {
+      success: false,
+      error: `Đã xảy ra lỗi: ${error.message}`,
+      usedCache: false
+    };
+  }
+}
+
 /**
- * Function chính để theo dõi tiến trình của sinh viên theo PLO
- * @param {string} maKhoi - Mã khối người dùng nhập
- * @param {string} maSV - Mã sinh viên cần kiểm tra
- * @returns {Promise<Object>} - Kết quả phân tích
+ * ✅ Function chính được viết lại theo yêu cầu mới - lưu theo từng năm
  */
 async function trackStudentPLOProgress(maKhoi, maSV) {
   try {
@@ -213,7 +652,24 @@ async function trackStudentPLOProgress(maKhoi, maSV) {
       };
     }
     
-    // BƯỚC 1: Lấy thông tin tiêu chí và nhóm PLO từ MaKhoi
+    // BƯỚC 1: Lấy DiemChon từ ChuongTrinh
+    const chuongTrinh = await ChuongTrinh.findOne({ MaKhoi: maKhoi }).lean();
+    
+    if (!chuongTrinh) {
+      return {
+        success: false,
+        error: `Không tìm thấy chương trình cho mã khối "${maKhoi}".`
+      };
+    }
+    
+    const diemChon = chuongTrinh.DiemChon;
+console.log('=== DEBUG DIEM CHON ===');
+console.log('ChuongTrinh object:', JSON.stringify(chuongTrinh, null, 2));
+console.log('DiemChon value:', diemChon);
+console.log('DiemChon type:', typeof diemChon);
+console.log('=======================');
+    
+    // BƯỚC 2: Lấy PLO và tiêu chí từ TieuChiDauRa
     const tieuChiResults = await TieuChiDauRa.find({ MaKhoi: maKhoi }).lean();
     
     if (!tieuChiResults || tieuChiResults.length === 0) {
@@ -237,10 +693,8 @@ async function trackStudentPLOProgress(maKhoi, maSV) {
       ploGroups[plo].tieuChiList.push(tc.MaTieuChi);
     });
     
-    // Lấy danh sách MaTieuChi
+    // BƯỚC 3: Lấy môn học, loại điểm, trọng số từ MonHocTieuChi
     const maTieuChiList = tieuChiResults.map(tc => tc.MaTieuChi);
-    
-    // BƯỚC 2: Lấy thông tin chi tiết môn học từ MaTieuChi
     const monHocTieuChiResults = await MonHocTieuChi.find({
       MaTieuChi: { $in: maTieuChiList }
     }).lean();
@@ -252,443 +706,230 @@ async function trackStudentPLOProgress(maKhoi, maSV) {
       };
     }
     
-    // Tạo map từ MaTieuChi đến PLO
+    // Tạo mapping từ tiêu chí sang PLO
     const tieuChiToPLOMap = {};
     tieuChiResults.forEach(tc => {
       tieuChiToPLOMap[tc.MaTieuChi] = tc.MaPLO;
     });
     
-    // Tạo map từ môn học đến các tiêu chí và PLO liên quan
-    const monHocMap = {};
+    // Nhóm môn học theo PLO với thông tin LoaiDiem và TrongSo
+    const ploMonHocMap = {};
     monHocTieuChiResults.forEach(mh => {
-      const maMH = mh.MaMH;
-      const maTieuChi = mh.MaTieuChi;
-      const plo = tieuChiToPLOMap[maTieuChi];
+      const plo = tieuChiToPLOMap[mh.MaTieuChi];
       
-      if (!monHocMap[maMH]) {
-        monHocMap[maMH] = {
-          maMH: maMH,
-          ploList: new Set(),
-          tieuChiDetails: {}
-        };
+      if (!ploMonHocMap[plo]) {
+        ploMonHocMap[plo] = {};
       }
       
-      monHocMap[maMH].ploList.add(plo);
-      
-      // Lưu thông tin chi tiết về tiêu chí, loại điểm, điểm chuẩn và trọng số
-      if (!monHocMap[maMH].tieuChiDetails[maTieuChi]) {
-        monHocMap[maMH].tieuChiDetails[maTieuChi] = {
-          maTieuChi: maTieuChi,
-          plo: plo,
-          loaiDiem: mh.LoaiDiem || 'CK', // Mặc định là CK nếu không có
-          diemChon: mh.DiemChon || 5,    // Mặc định là 5 nếu không có
-          trongSo: mh.TrongSo || 1        // Mặc định là 1 nếu không có
+      if (!ploMonHocMap[plo][mh.MaMH]) {
+        ploMonHocMap[plo][mh.MaMH] = {
+          maMH: mh.MaMH,
+          loaiDiem: mh.LoaiDiem,
+          trongSo: mh.TrongSo
         };
       }
     });
     
-    // Lấy danh sách duy nhất các môn học
-    const maMHList = Object.keys(monHocMap);
+    // ✅ BƯỚC 4: Lấy và xử lý điểm sinh viên (normalize HK3 và chọn điểm cao hơn)
+    const diemSinhVienResults = await DiemSinhVien.find({ MaSV: maSV }).lean();
     
-    // BƯỚC 3: Lấy tất cả điểm của sinh viên
-    const allDiemResults = await DiemSinhVien.find({
-      MaSV: maSV,
-      MaMH: { $in: maMHList }
-    }).lean();
-    
-    // Chuẩn hóa dữ liệu điểm số (chuyển HK3 thành HK1 năm sau)
-    const normalizedDiemResults = [];
-    allDiemResults.forEach(diem => {
-      const normalizedDiem = {...diem};
-      normalizedDiem.originalNamHK = diem.NamHK; // Lưu lại giá trị gốc
-      normalizedDiem.NamHK = normalizeNamHK(diem.NamHK);
-      normalizedDiemResults.push(normalizedDiem);
-    });
-    
-    // Lấy các năm học kỳ duy nhất sau khi chuẩn hóa
-    const uniqueNormalizedNamHKList = [...new Set(normalizedDiemResults.map(diem => diem.NamHK))];
-    
-    // Lọc chỉ giữ lại HK1 và HK2
-    const filteredNamHKList = uniqueNormalizedNamHKList.filter(namHK => {
-      const hocKy = namHK.toString().charAt(4);
-      return hocKy === '1' || hocKy === '2';
-    }).sort((a, b) => a - b); // Sắp xếp tăng dần
-    
-    // Tạo cấu trúc dữ liệu theo yêu cầu MaSV -> PLO -> NamHK -> MaMH
-    const studentPLOProgress = {
-      MaSV: maSV,
-      info: sinhVien,
-      plos: {}
-    };
-    
-    // Khởi tạo cấu trúc dữ liệu cho từng PLO
-    Object.keys(ploGroups).forEach(plo => {
-      studentPLOProgress.plos[plo] = {
-        maPLO: plo,
-        nhomPLO: ploGroups[plo].nhomPLO,
-        semesters: {}
-      };
+    // Nhóm điểm theo MaMH và xử lý HK3
+    const diemMap = {};
+    diemSinhVienResults.forEach(diem => {
+      const normalizedNamHK = normalizeNamHK(diem.NamHK);
+      const key = `${diem.MaMH}_${normalizedNamHK}`;
       
-      // Khởi tạo dữ liệu cho từng học kỳ đã lọc
-      filteredNamHKList.forEach(namHK => {
-        studentPLOProgress.plos[plo].semesters[namHK] = {
-          namHK: namHK,
-          formattedNamHK: formatNamHK(namHK),
-          monHocStatus: {},
-          totalWeight: 0,
-          achievedWeight: 0,
-          notAchievedWeight: 0,
-          notAttemptedWeight: 0,
-          achievedRatio: "0/0",
-          achievedPercent: 0,
-          notAchievedPercent: 0,
-          notAttemptedPercent: 0,
-          allAchieved: false
-        };
-      });
-    });
-    
-    // Tính toán tổng trọng số cho từng PLO
-    Object.keys(ploGroups).forEach(plo => {
-      let totalPLOWeight = 0;
+      if (!diemMap[diem.MaMH]) {
+        diemMap[diem.MaMH] = {};
+      }
       
-      // Duyệt qua từng môn học và tính tổng trọng số
-      maMHList.forEach(maMH => {
-        const monHocInfo = monHocMap[maMH];
-        if (!monHocInfo.ploList.has(plo)) return;
+      // Nếu đã có điểm cho năm này, chọn điểm cao hơn
+      if (diemMap[diem.MaMH][normalizedNamHK]) {
+        const existing = diemMap[diem.MaMH][normalizedNamHK];
+        const existingDiem = Math.max(
+          getDiemTheoLoaiDiem(existing, existing.LoaiDiem) || 0,
+          getDiemTheoLoaiDiem(diem, diem.LoaiDiem) || 0
+        );
+        const newDiem = Math.max(
+          getDiemTheoLoaiDiem(existing, diem.LoaiDiem) || 0,
+          getDiemTheoLoaiDiem(diem, existing.LoaiDiem) || 0
+        );
         
-        // Tìm các tiêu chí của môn học thuộc PLO này
-        const tieuChiList = Object.values(monHocInfo.tieuChiDetails)
-          .filter(tc => tc.plo === plo);
-        
-        // Nếu không có tiêu chí nào, bỏ qua
-        if (tieuChiList.length === 0) return;
-        
-        // Tính tổng trọng số của môn học cho PLO này
-        let totalMonHocWeight = 0;
-        tieuChiList.forEach(tc => {
-          totalMonHocWeight += tc.trongSo;
-        });
-        
-        totalPLOWeight += totalMonHocWeight;
-      });
-      
-      // Cập nhật tổng trọng số cho từng học kỳ đã lọc
-      filteredNamHKList.forEach(namHK => {
-        studentPLOProgress.plos[plo].semesters[namHK].totalWeight = totalPLOWeight;
-      });
-    });
-    
-    // Nhóm điểm theo môn học và năm học kỳ đã chuẩn hóa
-    const normalizedDiemByMaMHAndNamHK = {};
-    
-    if (normalizedDiemResults && normalizedDiemResults.length > 0) {
-      normalizedDiemResults.forEach(diem => {
-        const maMH = diem.MaMH;
-        const namHK = diem.NamHK;
-        const key = `${maMH}_${namHK}`;
-        
-        if (!normalizedDiemByMaMHAndNamHK[key]) {
-          normalizedDiemByMaMHAndNamHK[key] = [];
+        // Chọn record có điểm cao hơn
+        if (newDiem > existingDiem) {
+          diemMap[diem.MaMH][normalizedNamHK] = diem;
         }
-        
-        normalizedDiemByMaMHAndNamHK[key].push(diem);
-      });
-    }
+      } else {
+        diemMap[diem.MaMH][normalizedNamHK] = diem;
+      }
+    });
     
-    // Tính toán trạng thái môn học cho từng học kỳ
-    maMHList.forEach(maMH => {
-      const monHocInfo = monHocMap[maMH];
+    // ✅ BƯỚC 5: Tính toán tiến trình theo từng năm cho từng PLO
+    const ploResults = {};
+    const allNamHKSet = new Set();
+    
+    // Lấy tất cả các năm học kỳ có điểm
+    Object.values(diemMap).forEach(yearlyData => {
+      Object.keys(yearlyData).forEach(namHK => {
+        allNamHKSet.add(parseInt(namHK));
+      });
+    });
+    
+    const sortedNamHKList = Array.from(allNamHKSet).sort((a, b) => a - b);
+    
+    for (const [plo, monHocInfo] of Object.entries(ploMonHocMap)) {
+      // Tính tổng trọng số lý thuyết cho PLO này
+      let tongTrongSoLyThuyet = 0;
+      for (const info of Object.values(monHocInfo)) {
+        tongTrongSoLyThuyet += info.trongSo;
+      }
       
-      // Duyệt qua từng PLO liên quan đến môn học
-      monHocInfo.ploList.forEach(plo => {
-        // Tìm các tiêu chí của môn học thuộc PLO này
-        const tieuChiList = Object.values(monHocInfo.tieuChiDetails)
-          .filter(tc => tc.plo === plo);
-        
-        // Nếu không có tiêu chí nào, bỏ qua
-        if (tieuChiList.length === 0) return;
-        
-        // Tính tổng trọng số của môn học cho PLO này
-        let totalMonHocWeight = 0;
-        tieuChiList.forEach(tc => {
-          totalMonHocWeight += tc.trongSo;
-        });
-        
-        // Khởi tạo trạng thái môn học là "chưa có" cho tất cả học kỳ đã lọc
-        filteredNamHKList.forEach(namHK => {
-          studentPLOProgress.plos[plo].semesters[namHK].monHocStatus[maMH] = {
-            maMH: maMH,
-            status: 'chuaco',
-            trongSo: totalMonHocWeight
-          };
-          
-          // Cập nhật trọng số chưa học
-          studentPLOProgress.plos[plo].semesters[namHK].notAttemptedWeight += totalMonHocWeight;
-        });
-        
-        // Biến theo dõi trạng thái hiện tại và học kỳ đã đạt
-        let currentStatus = 'chuaco';
-        let achievedInHK = null;
-        
-        // Duyệt qua từng học kỳ đã lọc theo thứ tự tăng dần
-        for (const namHK of filteredNamHKList) {
-          const key = `${maMH}_${namHK}`;
-          const diemList = normalizedDiemByMaMHAndNamHK[key] || [];
-          
-          if (diemList.length > 0) {
-            // Sắp xếp để ưu tiên điểm có trạng thái "đạt" trước
-            diemList.sort((a, b) => {
-              // Kiểm tra xem a có đạt không
-              const aAllPassed = checkAllPassed(a, tieuChiList);
-              // Kiểm tra xem b có đạt không
-              const bAllPassed = checkAllPassed(b, tieuChiList);
-              
-              // Ưu tiên điểm đạt
-              if (aAllPassed && !bAllPassed) return -1;
-              if (!aAllPassed && bAllPassed) return 1;
-              
-              // Nếu cùng trạng thái, ưu tiên điểm học kỳ gốc lớn hơn
-              return b.originalNamHK - a.originalNamHK;
-            });
+      const semesterProgress = {};
+      let cumulativeDiem = 0;
+      let cumulativeTrongSo = 0;
+      const cumulativeMonHoc = {};
+      
+      // ✅ Tính tiến trình tích lũy cho từng năm
+      for (const namHK of sortedNamHKList) {
+        // Thêm điểm mới của năm này
+        for (const [maMH, info] of Object.entries(monHocInfo)) {
+          if (diemMap[maMH] && diemMap[maMH][namHK]) {
+            const diemSV = diemMap[maMH][namHK];
+            const diem = getDiemTheoLoaiDiem(diemSV, info.loaiDiem);
             
-            // Lấy điểm tốt nhất (đã được sắp xếp ở trên)
-            const bestDiem = diemList[0];
-            
-            // Kiểm tra đạt hay không theo điểm tốt nhất
-            const allPassed = checkAllPassed(bestDiem, tieuChiList);
-            
-            // Nếu đã có trạng thái 'dat' ở học kỳ trước, giữ nguyên
-            if (currentStatus === 'dat') {
-              // Không làm gì, giữ trạng thái 'dat'
-            } else {
-              // Cập nhật trạng thái hiện tại dựa trên điểm tốt nhất
-              currentStatus = allPassed ? 'dat' : 'khongdat';
-              
-              // Nếu đạt, lưu lại học kỳ đã đạt
-              if (allPassed) {
-                achievedInHK = namHK;
+            if (diem !== null && !isNaN(diem)) {
+              // Nếu đã có điểm cho môn này rồi, thay thế bằng điểm mới
+              if (cumulativeMonHoc[maMH]) {
+                cumulativeDiem -= cumulativeMonHoc[maMH].diemCoTrongSo;
+                cumulativeTrongSo -= cumulativeMonHoc[maMH].trongSo;
               }
+              
+              const diemCoTrongSo = diem * info.trongSo;
+              cumulativeDiem += diemCoTrongSo;
+              cumulativeTrongSo += info.trongSo;
+              
+              cumulativeMonHoc[maMH] = {
+                diem: diem,
+                loaiDiem: info.loaiDiem,
+                trongSo: info.trongSo,
+                diemCoTrongSo: diemCoTrongSo,
+                namHK: namHK,
+                status: 'co_diem'
+              };
             }
           }
-          
-          // Cập nhật trạng thái môn học cho học kỳ hiện tại
-          const semesterInfo = studentPLOProgress.plos[plo].semesters[namHK];
-          
-          // Trạng thái môn học cũ
-          const oldStatus = semesterInfo.monHocStatus[maMH].status;
-          
-          // Nếu trạng thái thay đổi, cập nhật lại trọng số
-          if (oldStatus !== currentStatus) {
-            // Trừ trọng số cũ
-            switch (oldStatus) {
-              case 'dat':
-                semesterInfo.achievedWeight -= totalMonHocWeight;
-                break;
-              case 'khongdat':
-                semesterInfo.notAchievedWeight -= totalMonHocWeight;
-                break;
-              case 'chuaco':
-                semesterInfo.notAttemptedWeight -= totalMonHocWeight;
-                break;
-            }
-            
-            
-            // Cộng trọng số mới
-            switch (currentStatus) {
-              case 'dat':
-                semesterInfo.achievedWeight += totalMonHocWeight;
-                break;
-              case 'khongdat':
-                semesterInfo.notAchievedWeight += totalMonHocWeight;
-                break;
-              case 'chuaco':
-                semesterInfo.notAttemptedWeight += totalMonHocWeight;
-                break;
-            }
-            
-            // Cập nhật trạng thái môn học
-            semesterInfo.monHocStatus[maMH] = {
-              maMH: maMH,
-              status: currentStatus,
-              trongSo: totalMonHocWeight,
-              achievedInHK: achievedInHK // Thêm thông tin về học kỳ đã đạt
+        }
+        
+        // Tính toán cho năm này
+        const diemChuanCoTrongSo = tinhDiemChuanCoTrongSo(diemChon, tongTrongSoLyThuyet);
+        const trangThaiDat = sinhVien.plos[plo].tongDiemSinhVien >= diemChuanCoTrongSo;
+
+        const trongSoChuaCo = (tongTrongSoLyThuyet - cumulativeTrongSo) / tongTrongSoLyThuyet;
+        
+        // Tạo thông tin môn học cho năm này
+        const monHocStatus = {};
+        for (const [maMH, info] of Object.entries(monHocInfo)) {
+          if (cumulativeMonHoc[maMH]) {
+            monHocStatus[maMH] = cumulativeMonHoc[maMH];
+          } else {
+            monHocStatus[maMH] = {
+              diem: null,
+              loaiDiem: info.loaiDiem,
+              trongSo: info.trongSo,
+              diemCoTrongSo: 0,
+              namHK: null,
+              status: 'chua_hoc'
             };
           }
         }
-      });
-    });
-    
-    // Tính tỷ lệ đạt/tổng và phần trăm cho từng học kỳ
-    Object.keys(ploGroups).forEach(plo => {
-      const ploData = studentPLOProgress.plos[plo];
-      
-      filteredNamHKList.forEach(namHK => {
-        const semester = ploData.semesters[namHK];
-        const totalWeight = semester.totalWeight;
         
-        // Tính tỷ lệ đạt/tổng
-        semester.achievedRatio = `${semester.achievedWeight.toFixed(2)}/${totalWeight.toFixed(2)}`;
-        
-        // Tính phần trăm cho từng loại trạng thái
-        if (totalWeight > 0) {
-          semester.achievedPercent = (semester.achievedWeight / totalWeight * 100);
-          semester.notAchievedPercent = (semester.notAchievedWeight / totalWeight * 100);
-          semester.notAttemptedPercent = (semester.notAttemptedWeight / totalWeight * 100);
-        }
-        
-        // Kiểm tra xem tất cả các môn học đều đạt chưa
-        semester.allAchieved = (semester.achievedWeight > 0 && semester.achievedWeight >= totalWeight);
-      });
-    });
-
-
-// Lấy tất cả các NamHK từ DiemSinhVien
-    const allNamHKResults = await DiemSinhVien.distinct('NamHK');
-    // Tạo mảng số từ kết quả
-    let allSemesters = allNamHKResults.map(Number);
-    
-    // Xác định học kỳ cao nhất
-    const maxNamHK = allSemesters.length > 0 ? Math.max(...allSemesters) : 20241;
-    const maxYear = Math.floor(maxNamHK / 10);
-    const maxSemester = maxNamHK % 10;
-    
-    // Tạo danh sách đầy đủ học kỳ từ 2020.1 đến học kỳ cao nhất
-    allSemesters = [];
-    for (let year = 2020; year <= maxYear; year++) {
-      for (let semester = 1; semester <= 2; semester++) {
-        if (year < maxYear || (year === maxYear && semester <= maxSemester)) {
-          allSemesters.push(year * 10 + semester);
-        }
+        semesterProgress[namHK] = {
+          namHK: namHK,
+          tongDiemSinhVien: cumulativeDiem,
+          diemChuanCoTrongSo: diemChuanCoTrongSo,
+          tongTrongSoSinhVienCo: cumulativeTrongSo,
+          trangThaiDat: trangThaiDat,
+          trongSoChuaCo: trongSoChuaCo,
+          achievedPercent: cumulativeTrongSo > 0 ? (cumulativeTrongSo / tongTrongSoLyThuyet) * 100 : 0,
+          notAttemptedPercent: (trongSoChuaCo * 100),
+          achievedRatio: `${cumulativeTrongSo.toFixed(1)}/${tongTrongSoLyThuyet.toFixed(1)}`,
+          monHocStatus: monHocStatus,
+          allAchieved: trangThaiDat && trongSoChuaCo === 0
+        };
       }
+      
+      // Lấy kết quả cuối cùng (năm cao nhất)
+      const latestNamHK = Math.max(...sortedNamHKList);
+      const finalResult = semesterProgress[latestNamHK] || {
+        tongDiemSinhVien: 0,
+        diemChuanCoTrongSo: 0,
+        tongTrongSoSinhVienCo: 0,
+        trangThaiDat: false,
+        trongSoChuaCo: 1
+      };
+      
+      ploResults[plo] = {
+        maPLO: plo,
+        monHocList: Object.keys(monHocInfo),
+        tongDiemSinhVien: finalResult.tongDiemSinhVien,
+        diemChuanCoTrongSo: finalResult.diemChuanCoTrongSo,
+        tongTrongSoSinhVienCo: finalResult.tongTrongSoSinhVienCo,
+        tongTrongSoLyThuyet: tongTrongSoLyThuyet,
+        trangThaiDat: finalResult.trangThaiDat,
+        trongSoChuaCo: finalResult.trongSoChuaCo,
+        chiTietMonHoc: finalResult.monHocStatus,
+        semesters: semesterProgress // ✅ Lưu tiến trình từng năm
+      };
     }
     
-    // Sử dụng hàm ensureFullSemesters để đảm bảo dữ liệu đầy đủ
-    const updatedStudentPLOProgress = ensureFullSemesters(studentPLOProgress, allSemesters);
+    // Tạo danh sách năm học kỳ formatted
+    const namHKList = sortedNamHKList.map(namHK => ({
+      value: namHK,
+      formatted: formatNamHK(namHK)
+    }));
+    
+    const result = {
+      sinhVien: {
+        MaSV: maSV,
+        info: sinhVien,
+        plos: ploResults
+      },
+      ploGroups: ploGroups,
+      namHKList: namHKList,
+      diemChon: diemChon
+    };
     
     return {
       success: true,
-      data: {
-        sinhVien: updatedStudentPLOProgress,
-        ploGroups: ploGroups,
-        namHKList: filteredNamHKList.map(namHK => ({
-          value: namHK,
-          formatted: formatNamHK(namHK)
-        }))
-      }
+      data: result
     };
     
   } catch (error) {
-    console.error('Error in trackStudentPLOProgress:', error);
+    console.error('❌ Lỗi trackStudentPLOProgress:', error);
     return {
       success: false,
-      error: `Đã xảy ra lỗi khi xử lý dữ liệu: ${error.message}`
+      error: `Đã xảy ra lỗi: ${error.message}`
     };
   }
 }
 
-exports.trackStudentPLOProgress = trackStudentPLOProgress;
 
-
-// Thêm vào cuối file controllers/ploProgressController.js
-
-// Hàm này sẽ đảm bảo dữ liệu PLO được đầy đủ cho tất cả học kỳ
-function ensureFullSemesters(studentPLOProgress, allSemesters) {
-  if (!studentPLOProgress || !studentPLOProgress.plos) return studentPLOProgress;
+// Export for reuse in other controllers
+module.exports = {
+  // Main exports
+  searchPLOProgress: exports.searchPLOProgress,
+  getPLOProgressForm: exports.getPLOProgressForm,
   
-  // Duyệt qua từng PLO
-  Object.keys(studentPLOProgress.plos).forEach(plo => {
-    const semesters = studentPLOProgress.plos[plo].semesters || {};
-    
-    // Sắp xếp các học kỳ đã có theo thứ tự tăng dần
-    const existingSemesters = Object.keys(semesters).map(Number).sort((a, b) => a - b);
-    if (existingSemesters.length === 0) return; // Không có dữ liệu học kỳ nào
-    
-    // Điền vào tất cả các khoảng trống giữa các học kỳ
-    for (let i = 0; i < existingSemesters.length; i++) {
-      const currentSemester = existingSemesters[i];
-      const nextSemester = (i < existingSemesters.length - 1) ? existingSemesters[i + 1] : null;
-      
-      if (nextSemester) {
-        // Tìm tất cả các học kỳ nằm giữa currentSemester và nextSemester
-        allSemesters.forEach(namHK => {
-          const numNamHK = Number(namHK);
-          if (numNamHK > currentSemester && numNamHK < nextSemester && !semesters[numNamHK]) {
-            // Sao chép dữ liệu từ học kỳ hiện tại
-            semesters[numNamHK] = JSON.parse(JSON.stringify(semesters[currentSemester]));
-            semesters[numNamHK].namHK = numNamHK;
-            semesters[numNamHK].formattedNamHK = formatNamHK(numNamHK);
-          }
-        });
-      }
-    }
-    
-    // Sao chép dữ liệu từ học kỳ mới nhất cho các học kỳ sau đó
-    const latestSemester = existingSemesters[existingSemesters.length - 1];
-    allSemesters.forEach(namHK => {
-      const numNamHK = Number(namHK);
-      if (numNamHK > latestSemester && !semesters[numNamHK]) {
-        // Sao chép dữ liệu từ học kỳ mới nhất
-        semesters[numNamHK] = JSON.parse(JSON.stringify(semesters[latestSemester]));
-        semesters[numNamHK].namHK = numNamHK;
-        semesters[numNamHK].formattedNamHK = formatNamHK(numNamHK);
-      }
-    });
-  });
+  // Helper functions
+  formatNamHK,
+  normalizeNamHK,
+  getAllNamHKRange,
+  duplicateAndFillSemesters,
+  tinhDiemChuanCoTrongSo,
+  getDiemTheoLoaiDiem,
   
-  return studentPLOProgress;
-}
-
-function getUniqueStudents(sinhVienList) {
-  const uniqueMaSVs = new Set();
-  const uniqueSVs = [];
-  
-  sinhVienList.forEach(sv => {
-    if (!uniqueMaSVs.has(sv.MaSV)) {
-      uniqueMaSVs.add(sv.MaSV);
-      uniqueSVs.push(sv);
-    }
-  });
-  
-  return uniqueSVs;
-}
-
-// Export các hàm cần thiết
-exports.trackStudentPLOProgress = trackStudentPLOProgress;
-exports.formatNamHK = formatNamHK;
-exports.ensureFullSemesters = ensureFullSemesters;
-exports.getUniqueStudents = getUniqueStudents;
-
-// const studentPLOProgress = {
-//   MaSV: maSV,                    // Mã sinh viên
-//   info: sinhVien,                // Thông tin sinh viên
-//   plos: {                        // Các PLO
-//     [plo]: {                     // Mỗi PLO
-//       maPLO: plo,                // Mã PLO
-//       nhomPLO: ploGroups[plo].nhomPLO, // Nhóm PLO
-//       semesters: {               // Các học kỳ
-//         [namHK]: {               // Mỗi học kỳ
-//           namHK: namHK,          // Mã năm học kỳ
-//           formattedNamHK: formatNamHK(namHK), // Năm học kỳ đã format
-//           monHocStatus: {        // Trạng thái các môn học
-//             [maMH]: {            // Mỗi môn học
-//               maMH: maMH,        // Mã môn học
-//               status: 'dat'/'khongdat'/'chuaco', // Trạng thái
-//               trongSo: totalMonHocWeight, // Trọng số
-//               achievedInHK: achievedInHK  // Học kỳ đã đạt
-//             }
-//           },
-//           totalWeight: 0,        // Tổng trọng số
-//           achievedWeight: 0,      // Trọng số đã đạt
-//           notAchievedWeight: 0,   // Trọng số không đạt
-//           notAttemptedWeight: 0,  // Trọng số chưa học
-//           achievedRatio: "0/0",   // Tỷ lệ đạt/tổng
-//           achievedPercent: 0,     // Phần trăm đạt
-//           notAchievedPercent: 0,  // Phần trăm không đạt
-//           notAttemptedPercent: 0, // Phần trăm chưa học
-//           allAchieved: false      // Tất cả đều đạt
-//         }
-//       }
-//     }
-//   }
-// };
+  // Cache functions
+  saveToCache,
+  loadFromCache,
+  getCacheKey
+};

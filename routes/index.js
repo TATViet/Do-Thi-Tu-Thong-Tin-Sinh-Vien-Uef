@@ -8,6 +8,8 @@ const diemSinhVienController = require('../controllers/diemSinhVienController');
 const sinhVienTheoKhoiController = require('../controllers/sinhVienTheoKhoiController');
 const ploProgressController = require('../controllers/ploProgressController');
 const allStudentsProgressController = require('../controllers/allStudentsProgressController');
+const diagramController = require('../controllers/diagramController');
+
 
 // Trang tìm kiếm tiêu chí
 router.get('/', searchPLOController.getSearchPage);
@@ -35,5 +37,13 @@ router.post('/searchPLOProgress', ploProgressController.searchPLOProgress);
 // Routes cho tính năng theo dõi tiến trình PLO của tat ca sinh vien trong Khoi
 router.get('/allStudentsProgress', allStudentsProgressController.getAllStudentsProgressForm);
 router.post('/searchAllStudentsProgress', allStudentsProgressController.searchAllStudentsProgress);
+
+// Routes cho biểu đồ
+router.get('/diagram', diagramController.getDiagramForm);
+router.post('/generateDiagram', diagramController.generateDiagram);
+
+// Routes cho cacha
+// router.post ('/clearCache', diagramController.clearCache);
+// router.get ('/cacheStats', diagramController.getCacheStats);
 
 module.exports = router;

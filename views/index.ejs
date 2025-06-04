@@ -520,7 +520,8 @@
     <a href="/diem" class="nav-link">Tra cứu điểm</a>
     <a href="/svtheokhoi" class="nav-link">Sinh viên theo khối</a>
     <a href="/ploProgress" class="nav-link">Tiến trình PLO</a>
-    <a href="/allStudentsProgress" class="nav-link">Theo dõi tiến trình tất cả sinh viên</a>
+    <a href="/allStudentsProgress" class="nav-link">Theo dõi tiến trình tất cả sinh viên</a> 
+    <a href="/diagram" class="nav-link">Biểu đồ hoàn thành PLO của khối</a>
   </div>
   
   <div class="container">
@@ -987,18 +988,17 @@
         <label for="maKhoi">Nhập Mã Khối:</label>
         <input type="text" id="maKhoi" name="maKhoi" value="<%= locals.maKhoiQuery || '' %>" required>
       </div>
-      
-      <button type="submit" class="btn-primary">Tìm kiếm</button>
+      <button type="submit">Tìm kiếm</button>
     </form>
 
     <!-- Hiển thị form chọn sinh viên nếu đã có mã khối -->
     <% if (locals.sinhVienOptions && locals.sinhVienOptions.length > 0) { %>
-      <div class="student-selection">
+      <div class="autocomplete-container">
         <h3>Chọn Sinh Viên:</h3>
-        <input type="text" id="maSVInput" class="search-input" placeholder="Nhập mã sinh viên..." 
+        <input type="text" id="maSVInput" placeholder="Nhập mã sinh viên..." 
                value="<%= locals.selectedMaSV || '' %>">
         
-        <div id="svSuggestions" class="suggestion-list">
+        <div id="svSuggestions" class="autocomplete-suggestions" style="display: none;">
           <%
           var uniqueSVs = [];
           var uniqueMaSVs = new Set();
@@ -1021,109 +1021,9 @@
         <form action="/searchPLOProgress" method="POST" id="sinhVienForm">
           <input type="hidden" name="maKhoi" value="<%= locals.maKhoiQuery %>">
           <input type="hidden" id="maSV" name="maSV" value="<%= locals.selectedMaSV || '' %>">
-          <button type="submit" id="submitSV" class="btn-success">Xem tiến trình</button>
+          <button type="submit" id="submitSV" class="secondary">Xem tiến trình</button>
         </form>
       </div>
-      
-      <script>
-        // Lọc danh sách sinh viên khi nhập
-        document.getElementById('maSVInput').addEventListener('input', function() {
-          const input = this.value.toLowerCase();
-          const suggestionItems = document.querySelectorAll('.suggestion-item');
-          
-          suggestionItems.forEach(function(item) {
-            const maSV = item.textContent.trim().toLowerCase();
-            if (maSV.includes(input)) {
-              item.style.display = 'block';
-            } else {
-              item.style.display = 'none';
-            }
-          });
-          
-          document.getElementById('svSuggestions').style.display = 'block';
-        });
-        
-        // Hàm chọn sinh viên
-        function selectSinhVien(maSV) {
-          document.getElementById('maSVInput').value = maSV;
-          document.getElementById('maSV').value = maSV;
-          document.getElementById('svSuggestions').style.display = 'none';
-        }
-        
-        // Hiển thị danh sách khi click vào input
-        document.getElementById('maSVInput').addEventListener('click', function() {
-          document.getElementById('svSuggestions').style.display = 'block';
-        });
-        
-        // Đóng danh sách khi click ra ngoài
-        document.addEventListener('click', function(e) {
-          if (e.target.id !== 'maSVInput' && !e.target.classList.contains('suggestion-item')) {
-            document.getElementById('svSuggestions').style.display = 'none';
-          }
-        });
-        
-        // Cập nhật giá trị form khi submit
-        document.getElementById('sinhVienForm').addEventListener('submit', function(e) {
-          const maSVInput = document.getElementById('maSVInput').value;
-          document.getElementById('maSV').value = maSVInput;
-        });
-      </script>
-      
-      <style>
-        .student-selection {
-          margin-top: 20px;
-          padding: 15px;
-          background-color: #f9f9f9;
-          border-radius: 4px;
-          border: 1px solid #ddd;
-        }
-        
-        .search-input {
-          width: 100%;
-          padding: 10px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          margin-bottom: 10px;
-        }
-        
-        .suggestion-list {
-          max-height: 200px;
-          overflow-y: auto;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          margin-bottom: 10px;
-          background-color: white;
-          display: none;
-        }
-        
-        .suggestion-item {
-          padding: 10px;
-          cursor: pointer;
-          border-bottom: 1px solid #eee;
-        }
-        
-        .suggestion-item:hover {
-          background-color: #f0f0f0;
-        }
-        
-        .btn-success {
-          background-color: #4CAF50;
-          color: white;
-          padding: 10px 15px;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-        }
-        
-        .btn-primary {
-          background-color: #3498db;
-          color: white;
-          padding: 10px 15px;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-        }
-      </style>
     <% } %>
 
     <!-- Hiển thị lỗi nếu có -->
@@ -1133,331 +1033,2339 @@
       </div>
     <% } %>
 
-    <!-- Kết quả theo dõi tiến trình -->
+    <!-- KẾT QUẢ THEO DÕI TIẾN TRÌNH PLO -->
     <% if (locals.ploProgressResults && locals.ploProgressResults.sinhVien) { %>
       <div class="results">
+        <!-- Thông tin sinh viên -->
         <div class="summary-box">
-          <h3>Thông tin sinh viên</h3>
+          <h3>📋 Thông tin sinh viên</h3>
           <p><strong>Mã sinh viên:</strong> <%= ploProgressResults.sinhVien.MaSV %></p>
           <% if (ploProgressResults.sinhVien.info) { %>
-            <p><strong>Mã khoa:</strong> <%= ploProgressResults.sinhVien.info.MaKhoa || '' %></p>
-            <p><strong>Mã ngành/chương trình:</strong> <%= ploProgressResults.sinhVien.info.MaNgChng || '' %></p>
+            <p><strong>Mã khoa:</strong> <%= ploProgressResults.sinhVien.info.MaKhoa || 'N/A' %></p>
+            <p><strong>Mã ngành:</strong> <%= ploProgressResults.sinhVien.info.MaNgChng || 'N/A' %></p>
           <% } %>
+          <p><strong>Điểm chuẩn:</strong> <span class="success"><%= ploProgressResults.diemChon %></span></p>
         </div>
         
-        <!-- Hiển thị tiến trình theo PLO -->
-        <% 
-          // Lấy danh sách PLO
-          const ploList = Object.keys(ploProgressResults.ploGroups);
+        <!-- Ma trận tiến trình PLO theo năm học kỳ -->
+        <div class="plo-matrix-wrapper">
+          <h3>📊 Ma trận tiến trình PLO theo năm học kỳ</h3>
           
-          // Duyệt qua từng PLO
-          ploList.forEach(function(plo) {
-            if (ploProgressResults.sinhVien.plos && ploProgressResults.sinhVien.plos[plo]) {
-              const ploData = ploProgressResults.sinhVien.plos[plo];
-        %>
-          <div class="plo-detail-group">
-            <div class="plo-header">
-              <h3>PLO: <%= plo %></h3>
-            </div>
+          <% 
+            // Lấy tất cả các năm học kỳ có trong dữ liệu
+            const allNamHKSet = new Set();
+            const ploList = Object.keys(ploProgressResults.ploGroups);
             
-            <div class="plo-content">
-              <table class="student-table">
-                <thead>
-                  <tr>
-                    <th>Năm học kỳ</th>
-                    <th>Tiến trình</th>
-                    <th>Tỷ lệ đạt</th>
-                    <th>Chi tiết môn học</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% 
-                    // Lấy danh sách năm học kỳ
-                    ploProgressResults.namHKList.forEach(function(namHKObj) {
-                      const namHK = namHKObj.value;
-                      if (ploData.semesters && ploData.semesters[namHK]) {
-                        const semesterData = ploData.semesters[namHK];
-                  %>
-                    <tr>
-                      <td><%= namHKObj.formatted %></td>
-                      <td>
-                        <div class="progress-bar-container">
-                          <% if (semesterData.allAchieved) { %>
-                            <!-- Tất cả đều đạt - hiển thị màu vàng -->
-                            <div class="progress-bar-full" style="width: 100%;"></div>
-                          <% } else { %>
-                            <!-- Hiển thị 3 màu khác nhau theo thứ tự: xanh lá (đạt), xám (không đạt), trắng (chưa có) -->
-                            <% if (semesterData.achievedPercent > 0) { %>
-                            <div class="progress-bar-achieved" style="width: <%= semesterData.achievedPercent %>%;"></div>
+            ploList.forEach(function(plo) {
+              if (ploProgressResults.sinhVien.plos && ploProgressResults.sinhVien.plos[plo]) {
+                const ploData = ploProgressResults.sinhVien.plos[plo];
+                if (ploData.semesters) {
+                  Object.keys(ploData.semesters).forEach(namHK => {
+                    allNamHKSet.add(parseInt(namHK));
+                  });
+                }
+              }
+            });
+            
+            const sortedNamHKList = Array.from(allNamHKSet).sort((a, b) => a - b);
+
+            // Helper function để format NamHK
+            function formatNamHK(namHK) {
+                const namHKStr = namHK.toString();
+                if (namHKStr.length === 5) {
+                  const nam = namHKStr.substring(0, 4);  // "2020"
+                  const hk = namHKStr.substring(4);      // "1" hoặc "2"
+                  return `${nam}/HK${hk}`;
+                }
+                return namHKStr;
+              }
+
+            // Tính tiến trình tích lũy cho từng PLO
+            function calculateCumulativeProgress(ploData, upToNamHK) {
+              let coDiem = 0;
+              let tongSoMon = 0;
+              let tongDiemTichLuy = 0;
+              let tongTrongSoTichLuy = 0;
+              const allMonHoc = Object.keys(ploData.chiTietMonHoc);
+              
+              for (const maMH of allMonHoc) {
+                const monHocInfo = ploData.chiTietMonHoc[maMH];
+                tongSoMon++;
+                
+                // Kiểm tra xem môn này có điểm và được học trước hoặc trong kỳ này không
+                if (monHocInfo.status === 'co_diem' && monHocInfo.namHK && parseInt(monHocInfo.namHK) <= upToNamHK) {
+                  coDiem++;
+                  tongDiemTichLuy += Number(monHocInfo.diemCoTrongSo);
+                  tongTrongSoTichLuy += Number(monHocInfo.trongSo);
+                }
+              }
+              
+              const diemChuanCanDat = Number(ploProgressResults.diemChon) * tongTrongSoTichLuy;
+              const datChua = tongDiemTichLuy >= diemChuanCanDat;
+              let percentComplete;
+              if(tongTrongSoTichLuy>0.99){
+              percentComplete =100;}
+              else{
+              percentComplete = tongSoMon > 0 ? (coDiem / tongSoMon * 100) : 0;}
+              const isFullyCompleted = percentComplete === 100 && datChua;
+              
+              return { 
+                coDiem, 
+                tongSoMon, 
+                tongDiemTichLuy, 
+                tongTrongSoTichLuy,
+                diemChuanCanDat,
+                datChua,
+                percentComplete,
+                isFullyCompleted
+              };
+            }
+
+            // Kiểm tra PLO hoàn thành 100%
+function isPLOFullyCompleted(ploData) {
+  const hasEnoughWeight = ploData.tongTrongSoSinhVienCo > 0.99;
+  return hasEnoughWeight && ploData.trangThaiDat;
+}
+          %>
+          
+          <table class="student-table plo-matrix-table">
+            <thead>
+              <tr>
+                <th>PLO</th>
+                <th>Trạng thái cuối</th>
+                <% sortedNamHKList.forEach(function(namHK) { %>
+                  <th class="year-column"><%= formatNamHK(namHK) %></th>
+                <% }); %>
+                <th>Tổng kết</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% 
+                ploList.forEach(function(plo) {
+                  if (ploProgressResults.sinhVien.plos && ploProgressResults.sinhVien.plos[plo]) {
+                    const ploData = ploProgressResults.sinhVien.plos[plo];
+                    const isCompleted = isPLOFullyCompleted(ploData);
+              %>
+                <tr>
+                  <td class="plo-name-cell">
+                    <strong><%= plo %></strong>
+                    <br><small>TS: <%= Number(ploData.tongTrongSoLyThuyet).toFixed(1) %></small>
+                  </td>
+                  
+                  <td class="status-cell">
+                    <% if (isCompleted) { %>
+                      <span class="completed-badge">🎉 HOÀN THÀNH</span>
+                    <% } else { %>
+                      <% 
+                        // Sử dụng logic tương tự calculateCumulativeProgress
+                        const finalProgress = calculateCumulativeProgress(ploData, Math.max(...sortedNamHKList));
+                        const isAchieved = finalProgress.datChua;
+                      %>
+                      <span class="<%= isAchieved ? 'success' : 'failure' %>">
+                        <%= isAchieved ? '✅ ĐẠT' : '❌ CHƯA ĐẠT' %>
+                      </span>
+                    <% } %>
+                  </td>
+                  
+                  <% sortedNamHKList.forEach(function(namHK) { %>
+                    <td class="semester-cell">
+                      <% 
+                        const progress = calculateCumulativeProgress(ploData, namHK);
+                        const semesterData = ploData.semesters && ploData.semesters[namHK] ? ploData.semesters[namHK] : null;
+                        const isOriginalData = semesterData ? (semesterData.originalData !== false) : true;
+                        const hasNewDataThisSemester = semesterData && semesterData.originalData !== false;
+                      %>
+                        <div class="semester-content <%= hasNewDataThisSemester ? 'has-new-data' : 'no-new-data' %> <%= progress.isFullyCompleted ? 'fully-completed' : '' %>">
+                          <!-- Trạng thái đạt/không đạt -->
+                          <div class="semester-status">
+                            <% if (progress.isFullyCompleted) { %>
+                              <span class="completed-indicator">🎉</span>
+                            <% } else { %>
+                              <span class="<%= progress.datChua ? 'success' : 'failure' %> status-indicator">
+                                <%= progress.datChua ? '✓' : '✗' %>
+                              </span>
                             <% } %>
-                            <% if (semesterData.notAchievedPercent > 0) { %>
-                            <div class="progress-bar-faile-achieved" style="width: <%= semesterData.notAchievedPercent %>%;"></div>
-                            <% } %>
-                            <% if (semesterData.notAttemptedPercent > 0) { %>
-                            <div class="progress-bar-not-attempted" style="width: <%= semesterData.notAttemptedPercent %>%;"></div>
-                            <% } %>
+                          </div>
+                          
+                          <!-- Progress Bar -->
+                          <div class="progress-bar-container" style="height: 6px; margin: 3px 0;">
+                            <div class="progress-bar-achieved <%= progress.isFullyCompleted ? 'completed-bar' : '' %>" style="width: <%= progress.percentComplete.toFixed(1) %>%;"></div>
+                            <div class="progress-bar-not-attempted" style="width: <%= (100 - progress.percentComplete).toFixed(1) %>%;"></div>
+                          </div>
+                          
+                          <!-- Số môn đã có/tổng số môn -->
+                          <div class="progress-count">
+                            <strong><%= progress.coDiem %>/<%= progress.tongSoMon %></strong>
+                            <small>(<%= progress.percentComplete.toFixed(0) %>%)</small>
+                          </div>
+                          
+                          <!-- Điểm số tích lũy -->
+                          <div class="score-cumulative">
+                            <% 
+                              const diemTBThang10 = progress.tongTrongSoTichLuy > 0 ? (progress.tongDiemTichLuy / progress.tongTrongSoTichLuy) : 0;
+                              const diemChuanThang10 = Number(ploProgressResults.diemChon);
+                            %>
+                            <strong><%= diemTBThang10.toFixed(1) %></strong>/<%= diemChuanThang10.toFixed(1) %>
+                          </div>
+                          
+                          <!-- Nút chi tiết -->
+                          <button class="toggle-details" onclick="showCumulativeDetails('<%= plo %>', '<%= namHK %>')">
+                            Chi tiết
+                          </button>
+                          
+                          <!-- Indicator cho dữ liệu mới -->
+                          <% if (!hasNewDataThisSemester && namHK > sortedNamHKList[0]) { %>
+                            <div class="no-new-data-marker">*</div>
                           <% } %>
                         </div>
-                      </td>
-                      <td><%= semesterData.achievedRatio %></td>
-                      <td>
-                        <button class="toggle-details" onclick="toggleMonHocDetails('<%= plo %>_<%= namHK %>')">
-                          Chi tiết
-                        </button>
-                        <div id="monhoc-details-<%= plo %>_<%= namHK %>" class="monhoc-details" style="display: none;">
-                          <table class="nested-table">
-                            <thead>
-                              <tr>
-                                <th>Môn học</th>
-                                <th>Trạng thái</th>
-                                <th>Trọng số</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <% 
-                                const monHocStatus = semesterData.monHocStatus;
-                                if (monHocStatus) {
-                                  Object.keys(monHocStatus).forEach(function(maMH) {
-                                    const status = monHocStatus[maMH];
-                              %>
-                                <tr>
-                                  <td><%= maMH %></td>
-                                  <td class="<%= status.status === 'dat' ? 'success' : (status.status === 'khongdat' ? 'failure' : 'not-attempted') %>">
-                                    <%= status.status === 'dat' ? 'Đạt' : (status.status === 'khongdat' ? 'Không đạt' : 'Chưa học') %>
-                                  </td>
-                                  <td><%= status.trongSo %></td>
-                                </tr>
-                              <% 
-                                  });
-                                }
-                              %>
-                            </tbody>
-                          </table>
-                        </div>
-                      </td>
-                    </tr>
-                  <% 
-                      }
-                    });
-                  %>
-                </tbody>
-              </table>
+                    </td>
+                  <% }); %>
+                  
+                  <!-- Tổng kết -->
+                  <td class="final-result-cell <%= isCompleted ? 'completed-final' : '' %>">
+                    <div class="final-summary">
+                      <%
+                        const finalProgress = calculateCumulativeProgress(ploData, Math.max(...sortedNamHKList));
+                      %>
+                      <!-- Trạng thái cuối -->
+                      <div class="final-status">
+                        <% if (isCompleted) { %>
+                          <span class="completed-final-badge">🎉 HOÀN THÀNH</span>
+                        <% } else { %>
+                          <% 
+                            const finalProgress = calculateCumulativeProgress(ploData, Math.max(...sortedNamHKList));
+                            const isAchieved = finalProgress.datChua;
+                          %>
+                          <span class="<%= isAchieved ? 'success' : 'failure' %> final-status-badge">
+                            <%= isAchieved ? '✅ ĐẠT' : '❌ CHƯA ĐẠT' %>
+                          </span>
+                        <% } %>
+                      </div>
+                      
+                      <!-- Số môn cuối -->
+                      <div class="final-count">
+                        <strong><%= finalProgress.coDiem %>/<%= finalProgress.tongSoMon %></strong>
+                        <small>(<%= finalProgress.percentComplete.toFixed(0) %>%)</small>
+                      </div>
+                      
+                      <!-- Điểm số cuối -->
+                      <div class="final-score">
+                        <strong><%= Number(ploData.tongDiemSinhVien).toFixed(1) %></strong>/<%= Number(ploData.diemChuanCoTrongSo).toFixed(1) %>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              <% 
+                  }
+                });
+              %>
+            </tbody>
+          </table>
+          
+          <!-- Legend -->
+          <div class="matrix-legend">
+            <div class="legend-item">
+              <span class="completed-indicator">🎉</span>
+              <span>PLO hoàn thành 100%</span>
+            </div>
+            <div class="legend-item">
+              <span class="success status-indicator">✓</span>
+              <span>Đạt yêu cầu PLO</span>
+            </div>
+            <div class="legend-item">
+              <span class="failure status-indicator">✗</span>
+              <span>Chưa đạt yêu cầu PLO</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color has-new-data-legend"></div>
+              <span>Có dữ liệu mới trong kỳ</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color no-new-data-legend"></div>
+              <span>Không có dữ liệu mới (*)</span>
             </div>
           </div>
-        <% 
-            }
-          });
-        %>
+        </div>
+        
+        <!-- Modal chi tiết môn học tích lũy -->
+        <div id="cumulativeModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+          <div style="background-color: white; margin: 3% auto; padding: 0; border-radius: 8px; width: 90%; max-width: 900px; max-height: 90vh; overflow: hidden;">
+            <!-- Modal Header với nút đóng -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+              <h4 id="cumulativeModalTitle" style="margin: 0; color: #2c3e50;">Chi tiết môn học tích lũy</h4>
+              <button onclick="closeCumulativeModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6c757d; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;" title="Đóng">&times;</button>
+            </div>
+            <!-- Modal Body -->
+            <div style="padding: 20px; max-height: calc(90vh - 80px); overflow-y: auto;">
+              <div id="cumulativeModalContent"></div>
+            </div>
+          </div>
+        </div>
       </div>
-      
-      <!-- Script để toggle hiển thị chi tiết môn học -->
-      <script>
-        function toggleMonHocDetails(id) {
-          const content = document.getElementById('monhoc-details-' + id);
-          if (content.style.display === 'none') {
-            content.style.display = 'block';
-          } else {
-            content.style.display = 'none';
-          }
-        }
-      </script>
     <% } %>
+  
+
+  <!-- JavaScript -->
+  <script>
+    // Lọc danh sách sinh viên
+    document.getElementById('maSVInput')?.addEventListener('input', function() {
+      const input = this.value.toLowerCase();
+      const suggestionItems = document.querySelectorAll('.suggestion-item');
+      
+      suggestionItems.forEach(function(item) {
+        const maSV = item.textContent.trim().toLowerCase();
+        if (maSV.includes(input)) {
+          item.style.display = 'block';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+      
+      document.getElementById('svSuggestions').style.display = 'block';
+    });
+    
+    function selectSinhVien(maSV) {
+      document.getElementById('maSVInput').value = maSV;
+      document.getElementById('maSV').value = maSV;
+      document.getElementById('svSuggestions').style.display = 'none';
+    }
+    
+    document.getElementById('maSVInput')?.addEventListener('click', function() {
+      document.getElementById('svSuggestions').style.display = 'block';
+    });
+    
+    document.addEventListener('click', function(e) {
+      if (e.target.id !== 'maSVInput' && !e.target.classList.contains('suggestion-item')) {
+        const suggestions = document.getElementById('svSuggestions');
+        if (suggestions) suggestions.style.display = 'none';
+      }
+    });
+    
+    document.getElementById('sinhVienForm')?.addEventListener('submit', function(e) {
+      const maSVInput = document.getElementById('maSVInput').value;
+      document.getElementById('maSV').value = maSVInput;
+    });
+    
+    // Helper function for JavaScript
+    function formatNamHKJS(namHK) {
+      const namHKStr = namHK.toString();
+      const nam = namHKStr.substring(0, 4);
+      const hocKy = namHKStr.charAt(4);
+      return `${nam} HK${hocKy}`;
+    }
+    
+    function showCumulativeDetails(plo, upToNamHK) {
+  const modal = document.getElementById('cumulativeModal');
+  const modalTitle = document.getElementById('cumulativeModalTitle');
+  const modalContent = document.getElementById('cumulativeModalContent');
+  
+  modalTitle.textContent = `Chi tiết tích lũy PLO ${plo} - Đến ${formatNamHKJS(upToNamHK)}`;
+  
+  const ploData = window.ploProgressResults?.sinhVien?.plos?.[plo];
+  
+  if (ploData && ploData.chiTietMonHoc) {
+    let tableHTML = `
+      <table class="nested-table">
+        <thead>
+          <tr>
+            <th>Môn học</th>
+            <th>Loại điểm</th>
+            <th>Điểm</th>
+            <th>Trọng số</th>
+            <th>Điểm × TS</th>
+            <th>Năm HK</th>
+            <th>Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    
+    let tongDiemTichLuy = 0;
+    let tongTrongSoTichLuy = 0;
+    let soMonCoDiem = 0;
+    let tongSoMon = 0;
+    
+    Object.keys(ploData.chiTietMonHoc).forEach(maMH => {
+      const monHoc = ploData.chiTietMonHoc[maMH];
+      tongSoMon++;
+      
+      let trangThaiHienThi = '';
+      let classStatus = '';
+      let diemHienThi = '-';
+      let namHKHienThi = '-';
+      let diemCoTrongSoHienThi = '0.00';
+      
+      if (monHoc.status === 'co_diem' && monHoc.namHK && parseInt(monHoc.namHK) <= parseInt(upToNamHK)) {
+        // Môn đã có điểm và được học trước hoặc trong kỳ này
+        trangThaiHienThi = 'Có điểm';
+        classStatus = 'success';
+        diemHienThi = Number(monHoc.diem).toFixed(1);
+        namHKHienThi = formatNamHKJS(monHoc.namHK);
+        diemCoTrongSoHienThi = Number(monHoc.diemCoTrongSo).toFixed(2);
+        tongDiemTichLuy += Number(monHoc.diemCoTrongSo);
+        tongTrongSoTichLuy += Number(monHoc.trongSo);
+        soMonCoDiem++;
+      } else if (monHoc.status === 'co_diem' && parseInt(monHoc.namHK) > parseInt(upToNamHK)) {
+        // Môn có điểm nhưng học sau kỳ này
+        trangThaiHienThi = 'Chưa đến kỳ học';
+        classStatus = 'not-attempted';
+      } else {
+        // Môn chưa có điểm
+        trangThaiHienThi = 'Chưa có điểm';
+        classStatus = 'not-attempted';
+      }
+      
+      tableHTML += `
+        <tr>
+          <td><strong>${maMH}</strong></td>
+          <td>${monHoc.loaiDiem}</td>
+          <td>${diemHienThi}</td>
+          <td>${(Number(monHoc.trongSo) * 100).toFixed(0)}%</td>
+          <td>${diemCoTrongSoHienThi}</td>
+          <td>${namHKHienThi}</td>
+          <td>
+            <span class="${classStatus}">
+              ${trangThaiHienThi}
+            </span>
+          </td>
+        </tr>
+      `;
+    });
+    
+    // Tính điểm chuẩn và điểm trung bình thang 10
+    const diemChuan = Number(window.ploProgressResults.diemChon);
+    const diemChuanCanDat = diemChuan * tongTrongSoTichLuy;
+    const diemTrungBinhThang10 = tongTrongSoTichLuy > 0 ? (tongDiemTichLuy / tongTrongSoTichLuy) : 0;
+    const datChua = tongDiemTichLuy >= diemChuanCanDat;
+    let percentComplete;
+    if(tongTrongSoTichLuy>0.99){
+    percentComplete =100;}
+    else{
+    percentComplete = tongSoMon > 0 ? (soMonCoDiem / tongSoMon * 100) : 0;}    
+    const isFullyCompleted = percentComplete === 100 && datChua;
+    
+    tableHTML += `
+        </tbody>
+        <tfoot>
+          <tr style="background-color: #f8f9fa; font-weight: bold;">
+            <td colspan="3">TỔNG TÍCH LŨY</td>
+            <td>${(tongTrongSoTichLuy * 100).toFixed(0)}%</td>
+            <td>${tongDiemTichLuy.toFixed(2)}</td>
+            <td>-</td>
+            <td class="${isFullyCompleted ? 'completed' : (datChua ? 'success' : 'failure')}">
+              ${isFullyCompleted ? '🎉 HOÀN THÀNH' : (datChua ? '✅ ĐẠT' : '❌ CHƯA ĐẠT')}
+            </td>
+          </tr>
+          <tr style="background-color: ${isFullyCompleted ? '#fff3cd' : '#e9ecef'}; font-weight: bold; color: #2c3e50;">
+            <td colspan="7">
+              📊 <strong>Thống kê tích lũy đến ${formatNamHKJS(upToNamHK)}:</strong> 
+              ${soMonCoDiem}/${tongSoMon} môn có điểm (${percentComplete.toFixed(1)}%) 
+              | Điểm TB: ${diemTrungBinhThang10.toFixed(2)}/${diemChuan.toFixed(1)}
+              | Chi tiết tính toán: ${tongDiemTichLuy.toFixed(2)}/${diemChuanCanDat.toFixed(2)}
+              | <span class="${isFullyCompleted ? 'completed' : (datChua ? 'success' : 'failure')}">
+                ${isFullyCompleted ? '🎉 HOÀN THÀNH' : (datChua ? '✅ ĐẠT' : '❌ CHƯA ĐẠT')}
+              </span>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+    
+    modalContent.innerHTML = tableHTML;
+  } else {
+    modalContent.innerHTML = '<p class="no-results">Không có dữ liệu chi tiết</p>';
+  }
+  
+  modal.style.display = 'block';
+}
+    
+    function closeCumulativeModal() {
+      document.getElementById('cumulativeModal').style.display = 'none';
+    }
+    
+    // Đóng modal khi click outside
+    document.getElementById('cumulativeModal')?.addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeCumulativeModal();
+      }
+    });
+    
+    // Store data globally for modal access
+    <% if (locals.ploProgressResults) { %>
+      window.ploProgressResults = <%- JSON.stringify(ploProgressResults) %>;
+    <% } %>
+</script>
+  <!-- CSS cho PLO Matrix -->
+  <style>
+    .plo-matrix-wrapper {
+      margin-top: 30px;
+    }
+    
+    .plo-matrix-table {
+      width: 100%;
+      font-size: 11px;
+    }
+    
+    .plo-matrix-table th {
+      background-color: #2c3e50;
+      color: white;
+      padding: 8px 4px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    
+    .plo-matrix-table td {
+      padding: 6px 4px;
+      text-align: center;
+      vertical-align: middle;
+      border: 1px solid #ddd;
+    }
+    
+    .year-column {
+      min-width: 85px;
+      font-size: 10px;
+    }
+    
+    .plo-name-cell {
+      background-color: #ecf0f1;
+      font-weight: bold;
+      min-width: 70px;
+    }
+    
+    .status-cell {
+      background-color: #f8f9fa;
+      min-width: 90px;
+    }
+    
+    .semester-cell {
+      min-width: 85px;
+      padding: 4px;
+    }
+    
+    .semester-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 4px;
+      border-radius: 3px;
+      position: relative;
+      min-height: 100px;
+      justify-content: center;
+    }
+    
+    .semester-content.has-new-data {
+      background-color: #e8f5e8;
+      border: 2px solid #28a745;
+    }
+    
+    .semester-content.no-new-data {
+      background-color: #f8f9fa;
+      border: 1px dashed #6c757d;
+    }
+    
+    /* PLO hoàn thành 100% */
+    .semester-content.fully-completed {
+      background-color: #fff3cd !important;
+      border: 2px solid #ffc107 !important;
+    }
+    
+    .semester-status {
+      margin-bottom: 2px;
+    }
+    
+    .status-indicator {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      color: white;
+      font-weight: bold;
+      font-size: 10px;
+      line-height: 16px;
+      text-align: center;
+    }
+    
+    .status-indicator.success {
+      background-color: #28a745;
+    }
+    
+    .status-indicator.failure {
+      background-color: #dc3545;
+    }
+    
+    .completed-indicator {
+      font-size: 16px;
+      animation: bounce 2s infinite;
+    }
+    
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+      }
+      40% {
+        transform: translateY(-3px);
+      }
+      60% {
+        transform: translateY(-2px);
+      }
+    }
+    
+    .progress-bar-achieved.completed-bar {
+      background-color: #ffc107 !important;
+    }
+    
+    .progress-count {
+      font-size: 10px;
+      font-weight: bold;
+      color: #2c3e50;
+      text-align: center;
+    }
+    
+    .progress-count small {
+      font-size: 8px;
+      color: #666;
+    }
+    
+    .score-cumulative {
+      font-size: 9px;
+      font-weight: bold;
+      color: #495057;
+    }
+    
+    .no-new-data-marker {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      color: #6c757d;
+      font-weight: bold;
+      font-size: 8px;
+    }
+    
+    .final-result-cell {
+      background-color: #e8f5e8;
+      min-width: 110px;
+    }
+    
+    /* Cột tổng kết cho PLO hoàn thành */
+    .final-result-cell.completed-final {
+      background-color: #fff3cd !important;
+      border: 2px solid #ffc107 !important;
+    }
+    
+    .final-summary {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+    
+    .final-status-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: bold;
+    }
+    
+    .final-status-badge.success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    
+    .final-status-badge.failure {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    
+    .completed-badge, .completed-final-badge {
+      background-color: #fff3cd;
+      color: #856404;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-weight: bold;
+      font-size: 10px;
+      border: 1px solid #ffc107;
+      animation: glow 2s ease-in-out infinite alternate;
+      white-space: nowrap;
+      display: inline-block;
+      vertical-align: middle; 
+    }
+    
+    @keyframes glow {
+      from {
+        box-shadow: 0 0 5px #ffc107;
+      }
+      to {
+        box-shadow: 0 0 10px #ffc107, 0 0 15px #ffc107;
+      }
+    }
+    
+    .final-count {
+      font-size: 11px;
+      font-weight: bold;
+    }
+    
+    .final-count small {
+      font-size: 9px;
+      color: #666;
+    }
+    
+    .final-score {
+      font-size: 9px;
+      color: #666;
+    }
+    
+    .matrix-legend {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 10px;
+      font-size: 11px;
+      flex-wrap: wrap;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+    
+    .has-new-data-legend {
+      background-color: #e8f5e8;
+      border: 2px solid #28a745;
+    }
+    
+    .no-new-data-legend {
+      background-color: #f8f9fa;
+      border: 1px dashed #6c757d;
+    }
+    
+    /* Modal styles for completed status */
+    .nested-table .completed {
+      background-color: #fff3cd;
+      color: #856404;
+      font-weight: bold;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .plo-matrix-table {
+        font-size: 9px;
+      }
+      
+      .year-column {
+        min-width: 65px;
+        font-size: 8px;
+      }
+      
+      .semester-cell {
+        min-width: 65px;
+        padding: 2px;
+      }
+      
+      .semester-content {
+        min-height: 80px;
+        gap: 1px;
+        padding: 2px;
+      }
+      
+      .progress-count {
+        font-size: 8px;
+      }
+      
+      .score-cumulative {
+        font-size: 7px;
+      }
+      
+      .status-indicator {
+        width: 12px;
+        height: 12px;
+        font-size: 8px;
+        line-height: 12px;
+      }
+      
+      .completed-indicator {
+        font-size: 12px;
+      }
+      
+      .completed-badge, .completed-final-badge {
+        font-size: 8px;
+        padding: 2px 4px;
+      }
+      
+      .matrix-legend {
+        font-size: 9px;
+        gap: 10px;
+      }
+    }
+  </style>
   </div>
 <% } %>
 
 
 <!-- Phần 7: Tiến trình tất cả sinh viên -->
 <% if (locals.allStudentsProgressMode) { %>
-  <div class="section">
-    <h2 class="section-title">Theo dõi tiến trình PLO của tất cả sinh viên</h2>
+  <div class="all-students-container">
+    <h2>Tiến trình PLO của tất cả sinh viên</h2>
     
-    <!-- Form tìm kiếm mã khối -->
-    <form action="/searchAllStudentsProgress" method="POST">
-      <div class="form-group">
-        <label for="maKhoi">Nhập Mã Khối:</label>
-        <input type="text" id="maKhoi" name="maKhoi" value="<%= locals.maKhoiQuery || '' %>" required>
-      </div>
-      
-      <button type="submit" class="btn-search">Tìm kiếm</button>
+    <!-- Form tìm kiếm -->
+    <form action="/searchAllStudentsProgress" method="POST" class="search-form">
+      <label for="maKhoi">Mã Khối:</label>
+      <input type="text" id="maKhoi" name="maKhoi" value="<%= locals.maKhoiQuery || '' %>" required>
+      <button type="submit">Tìm kiếm</button>
     </form>
 
-    <!-- Hiển thị lỗi nếu có -->
-    <% if (locals.error) { %>
-      <div class="error">
-        <%= error %>
-      </div>
+    <!-- Status -->
+    <% if (locals.cacheStatus) { %>
+      <div class="status"><%= cacheStatus %> (<%= processingTime %>ms)</div>
     <% } %>
 
-    <!-- Kết quả theo dõi tiến trình của tất cả sinh viên -->
+    <!-- Error -->
+    <% if (locals.error) { %>
+      <div class="error"><%= error %></div>
+    <% } %>
+
+    <!-- Results -->
     <% if (locals.allStudentsProgress && locals.allStudentsProgress.length > 0) { %>
-      <div class="results">
-        <div class="summary-box">
-          <h3>Thông tin tìm kiếm</h3>
-          <p><strong>Mã khối:</strong> <%= maKhoiQuery %></p>
-          <p><strong>Số sinh viên hiển thị:</strong> <%= displayedStudents %></p>
-        </div>
-        
-        <!-- Tab điều hướng giữa các PLO -->
-        <div class="plo-tabs">
-          <% for (const plo in ploGroups) { %>
-            <button class="plo-tab <%= plo === Object.keys(ploGroups)[0] ? 'active' : '' %>" 
-                    onclick="openPLOTab(event, 'plo-<%= plo %>')">
-              <%= plo %>
-            </button>
-          <% } %>
-        </div>
-        
-        <!-- Nội dung cho từng PLO -->
-        <% for (const plo in ploGroups) { %>
-          <div id="plo-<%= plo %>" class="plo-tab-content" 
-               style="display: <%= plo === Object.keys(ploGroups)[0] ? 'block' : 'none' %>;">
-            <h3>PLO: <%= plo %></h3>
-            
-            
-            <table class="student-table">
+      
+      <!-- Summary -->
+      <div class="summary">
+        <strong>Khối:</strong> <%= maKhoiQuery %> | 
+        <strong>Sinh viên:</strong> <%= totalStudents %> | 
+        <strong>Điểm chuẩn:</strong> <%= diemChon %>
+      </div>
+      
+      <!-- PLO Tabs -->
+      <div class="tabs">
+        <% Object.keys(ploGroups).forEach(function(plo, index) { %>
+          <button class="tab <%= index === 0 ? 'active' : '' %>" onclick="showTab('<%= plo %>')">
+            PLO <%= plo %>
+          </button>
+        <% }); %>
+      </div>
+      
+      <!-- PLO Tables -->
+      <% Object.keys(ploGroups).forEach(function(plo, index) { %>
+        <div class="tab-content" id="tab-<%= plo %>" style="display: <%= index === 0 ? 'block' : 'none' %>">
+          <h3>PLO <%= plo %></h3>
+          
+          <div class="table-wrapper">
+            <table class="progress-table">
               <thead>
                 <tr>
-                  <th>Mã SV</th>
-                  <th>Họ Tên</th>
-                  <% if (locals.namHKList && locals.namHKList.length > 0) { %>
-                    <% namHKList.forEach(function(namHKObj) { %>
-                      <th><%= namHKObj.formatted %></th>
-                    <% }); %>
-                  <% } %>
+                  <th class="student-header">Mã SV</th>
+                  <% namHKList.forEach(function(semester) { %>
+                    <th class="semester-header"><%= semester.formatted %></th>
+                  <% }); %>
                 </tr>
               </thead>
               <tbody>
-                <% locals.allStudentsProgress.forEach(function(studentData) { %>
+                <% allStudentsProgress.forEach(function(studentData) { %>
                   <tr>
-                    <td><%= studentData.sinhVien.MaSV %></td>
-                    <td><%= studentData.sinhVien.HoTen %></td>
-                    <% if (locals.namHKList && locals.namHKList.length > 0) { %>
-                      <% namHKList.forEach(function(namHKObj) { %>
-                        <td>
-                          <% 
-                            const semesterData = (studentData.ploProgress[plo] && 
-                                               studentData.ploProgress[plo].semesters && 
-                                               studentData.ploProgress[plo].semesters[namHKObj.value]) ? 
-                                               studentData.ploProgress[plo].semesters[namHKObj.value] : null;
-                          %>
-                          
-                          <% if (semesterData) { %>
-                            <div class="progress-bar-container">
-                              <% if (semesterData.allAchieved) { %>
-                                <!-- Tất cả đều đạt - hiển thị màu vàng -->
-                                <div class="progress-bar-full" style="width: 100%;"></div>
-                              <% } else { %>
-                                <!-- Hiển thị 3 màu theo thứ tự: xanh lá, xám, trắng -->
-                                <% if (semesterData.achievedPercent > 0) { %>
-                                  <div class="progress-bar-achieved" style="width: <%= semesterData.achievedPercent %>%;"></div>
-                                <% } %>
-                                <% if (semesterData.notAchievedPercent > 0) { %>
-                                  <div class="progress-bar-not-achieved" style="width: <%= semesterData.notAchievedPercent %>%;"></div>
-                                <% } %>
-                                <% if (semesterData.notAttemptedPercent > 0) { %>
-                                  <div class="progress-bar-not-attempted" style="width: <%= semesterData.notAttemptedPercent %>%;"></div>
-                                <% } %>
-                              <% } %>
-                            </div>
-                            <div class="progress-ratio"><%= semesterData.achievedRatio %></div>
-                          <% } else { %>
-                            <div class="no-data">Không có dữ liệu</div>
-                          <% } %>
-                        </td>
-                      <% }); %>
-                    <% } %>
+                    <td class="student-id"><%= studentData.sinhVien.MaSV %></td>
+                    
+                    <% namHKList.forEach(function(semester) { %>
+                      <td class="semester-cell">
+                        <% 
+                          const ploData = studentData.ploProgress[plo];
+                          if (ploData && ploData.cumulativeProgress) {
+                            const progress = ploData.cumulativeProgress[semester.value];
+                            if (progress && progress.hasProgress) {
+                              const achieved = progress.achievedCourses;
+                              const total = progress.totalCourses;
+                              const score = progress.cumulativeScore;
+                              const isCompleted = progress.isCompleted;
+                              const isAchieved = progress.isAchieved;
+                              
+                              let cssClass = 'progress-box ';
+                              if (isCompleted && isAchieved) {
+                                cssClass += 'completed';
+                              } else if (isAchieved) {
+                                cssClass += 'achieved';
+                              } else {
+                                cssClass += 'not-achieved';
+                              }
+                        %>
+                              <div class="<%= cssClass %>">
+                                <div class="ratio"><%= achieved %>/<%= total %></div>
+                                <% 
+                                  const diemTBThang10 = progress.tongTrongSoCoTichLuy > 0 ? (score / progress.tongTrongSoCoTichLuy) : 0;
+                                %>
+                                <div class="score"><%= diemTBThang10.toFixed(1) %></div>
+                              </div>
+                        <% 
+                            } else {
+                        %>
+                              <span class="no-data">-</span>
+                        <% 
+                            }
+                          } else {
+                        %>
+                            <span class="no-data">-</span>
+                        <% 
+                          }
+                        %>
+                      </td>
+                    <% }); %>
                   </tr>
                 <% }); %>
               </tbody>
             </table>
           </div>
+        </div>
+      <% }); %>
+      
+      <!-- Legend -->
+      <div class="legend">
+        <h4>Chú thích:</h4>
+        <div class="legend-items">
+          <div class="legend-item">
+            <div class="legend-color completed"></div>
+            <span>Hoàn thành (100% + đạt điểm)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color achieved"></div>
+            <span>Đạt điểm chuẩn</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color not-achieved"></div>
+            <span>Chưa đạt điểm chuẩn</span>
+          </div>
+        </div>
+      </div>
+
+    <% } %>
+  
+
+  <script>
+    function showTab(ploId) {
+      // Hide all tab contents
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+      });
+      
+      // Remove active class from all tabs
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // Show selected tab content
+      document.getElementById('tab-' + ploId).style.display = 'block';
+      
+      // Add active class to clicked tab
+      event.target.classList.add('active');
+    }
+  </script>
+
+  <style>
+    .all-students-container {
+      max-width: 1400px;
+      margin: 20px auto;
+      padding: 20px;
+    }
+
+    .search-form {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+
+    .search-form label {
+      margin-right: 10px;
+      font-weight: bold;
+    }
+
+    .search-form input {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      margin-right: 10px;
+    }
+
+    .search-form button {
+      padding: 8px 16px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .status {
+      background: #d1ecf1;
+      color: #0c5460;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+    }
+
+    .summary {
+      background: #d4edda;
+      color: #155724;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #dee2e6;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px 5px 0 0;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .tab.active {
+      background: #007bff;
+    }
+
+    .tab:hover {
+      opacity: 0.8;
+    }
+
+    .tab-content h3 {
+      margin-bottom: 15px;
+      color: #495057;
+    }
+
+    .table-wrapper {
+      overflow: auto;
+      max-height: 70vh;
+      border: 1px solid #dee2e6;
+      border-radius: 5px;
+    }
+
+    .progress-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .progress-table th {
+      background: #495057;
+      color: white;
+      padding: 10px 5px;
+      text-align: center;
+      border: 1px solid #ddd;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .student-header {
+      width: 100px;
+      position: sticky;
+      left: 0;
+      z-index: 11;
+    }
+
+    .semester-header {
+      width: 90px;
+      min-width: 90px;
+    }
+
+    .progress-table td {
+      padding: 8px 5px;
+      text-align: center;
+      border: 1px solid #ddd;
+    }
+
+    .student-id {
+      background: #f8f9fa;
+      font-weight: bold;
+      position: sticky;
+      left: 0;
+      z-index: 5;
+    }
+
+    .semester-cell {
+      vertical-align: middle;
+    }
+
+    .progress-box {
+      display: inline-block;
+      padding: 4px 6px;
+      border-radius: 4px;
+      min-width: 40px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .progress-box.completed {
+      background: #ffc107;
+      color: #000;
+    }
+
+    .progress-box.achieved {
+      background: #28a745;
+      color: white;
+    }
+
+    .progress-box.not-achieved {
+      background: #6c757d;
+      color: white;
+    }
+
+    .ratio {
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .score {
+      font-size: 9px;
+      line-height: 1;
+      opacity: 0.9;
+    }
+
+    .no-data {
+      color: #adb5bd;
+      font-style: italic;
+    }
+
+    .legend {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 5px;
+    }
+
+    .legend h4 {
+      margin-bottom: 10px;
+    }
+
+    .legend-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-color {
+      width: 20px;
+      height: 15px;
+      border-radius: 3px;
+    }
+
+    .legend-color.completed {
+      background: #ffc107;
+    }
+
+    .legend-color.achieved {
+      background: #28a745;
+    }
+
+    .legend-color.not-achieved {
+      background: #6c757d;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .all-students-container {
+        padding: 10px;
+      }
+      
+      .tabs {
+        flex-direction: column;
+      }
+      
+      .tab {
+        margin-bottom: 5px;
+      }
+    }
+  </style>
+  </div>
+<% } %>
+
+
+<!-- Phần 8: Biểu đồ tiến trình PLO theo năm (CẢI TIẾN TỪNG PHẦN) -->
+<% if (locals.diagramMode) { %>
+  <div class="diagram-container">
+    <h2>📊 Biểu đồ tiến trình PLO theo năm</h2>
+    
+    <!-- Form tìm kiếm -->
+    <form action="/generateDiagram" method="POST" class="search-form">
+      <div class="form-group">
+        <label for="maKhoi">Mã Khối:</label>
+        <input type="text" id="maKhoi" name="maKhoi" value="<%= locals.maKhoiQuery || '' %>" required>
+        <button type="submit">Tạo biểu đồ</button>
+      </div>
+    </form>
+
+    <!-- Status và Stats -->
+    <% if (locals.cacheStatus) { %>
+      <div class="status-info">
+        <%= cacheStatus %>
+        <% if (locals.processingTime) { %>
+          (<%= processingTime %>ms)
         <% } %>
       </div>
+    <% } %>
+
+    <!-- Error -->
+    <% if (locals.error) { %>
+      <div class="error-message"><%= error %></div>
+    <% } %>
+
+    <!-- Chart Results -->
+    <% if (locals.chartData && locals.chartData.length > 0) { %>
       
-      <!-- CSS cho tab và hiển thị -->
+      <!-- Summary Stats -->
+      <div class="stats-summary">
+        <h3>📈 Thống kê khối <%= maKhoiQuery %></h3>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Tổng sinh viên:</span>
+            <span class="stat-value"><%= chartStats.totalStudents %></span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Tổng PLO:</span>
+            <span class="stat-value"><%= chartStats.totalPLOs %></span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Thời gian:</span>
+            <span class="stat-value"><%= chartStats.timeRange.from %> - <%= chartStats.timeRange.to %></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- BIỂU ĐỒ TỔNG HỢP TẤT CẢ PLO - GIẢM SIZE -->
+      <div class="overall-chart-container">
+        <h3>📊 Biểu đồ tổng hợp tất cả PLO</h3>
+        
+        <!-- Chart canvas - GIẢM SIZE HƠN -->
+        <div class="chart-wrapper">
+          <svg id="chart-overall" width="900" height="450"></svg>
+        </div>
+        
+        <!-- Legend tổng hợp - COMPACT HƠN -->
+        <div class="overall-legend">
+          <h4>Chú thích:</h4>
+          <div class="legend-grid">
+            <% chartData.forEach(function(ploData, index) { %>
+              <div class="legend-row">
+                <div class="legend-item legend-hoverable" data-ploindex="<%= index %>" data-linetype="solid">
+                  <span class="legend-line solid" data-ploindex="<%= index %>"></span>
+                  <span><%= ploData.ploName %> - Đã thi hết</span>
+                </div>
+                <div class="legend-item legend-hoverable" data-ploindex="<%= index %>" data-linetype="dashed">
+                  <span class="legend-line dashed" data-ploindex="<%= index %>"></span>
+                  <span><%= ploData.ploName %> - Hoàn thành</span>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts riêng cho từng PLO -->
+      <div class="individual-charts-section">
+        <h3>📈 Biểu đồ chi tiết từng PLO</h3>
+        <div class="charts-grid">
+          <% chartData.forEach(function(ploData, index) { %>
+            <div class="plo-chart-container">
+              <h4>🎯 <%= ploData.ploName %></h4>
+              
+              <!-- Chart canvas -->
+              <div class="chart-wrapper">
+                <svg id="chart-<%= ploData.plo %>" width="380" height="230"></svg>
+              </div>
+              
+              <!-- Legend cho từng PLO -->
+              <div class="chart-legend">
+                <div class="legend-item">
+                  <span class="legend-line solid" data-ploindex="<%= index %>"></span>
+                  <span>Đã thi hết</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-line dashed" data-ploindex="<%= index %>"></span>
+                  <span>Hoàn thành</span>
+                </div>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      </div>
+
+      <!-- Tooltip -->
+      <div id="tooltip" class="tooltip"></div>
+
+      <!-- CSS Styles - CẢI TIẾN -->
       <style>
-        .plo-tabs {
-          overflow: hidden;
-          border: 1px solid #ccc;
-          background-color: #f1f1f1;
-          margin-top: 20px;
-          border-radius: 4px 4px 0 0;
+        .diagram-container {
+          max-width: 1100px; /* GIẢM TỪ 1400px */
+          margin: 20px auto;
+          padding: 15px; /* GIẢM TỪ 20px */
         }
-        
-        .plo-tab {
-          background-color: #4CAF50; /* Màu xanh lá cho các tab chưa được chọn */
-          color: white;
-          float: left;
-          border: none;
+
+        .search-form {
+          background: #f8f9fa;
+          padding: 12px; /* GIẢM */
+          border-radius: 8px;
+          margin-bottom: 18px; /* GIẢM */
+          border: 1px solid #e9ecef;
+        }
+
+        .form-group {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+        }
+
+        .form-group label {
+          font-weight: bold;
+          min-width: 80px;
+          color: #495057;
+        }
+
+        .form-group input {
+          padding: 8px 12px; /* GIẢM */
+          border: 2px solid #ced4da;
+          border-radius: 6px;
+          flex: 1;
+          max-width: 180px; /* GIẢM */
+          font-size: 14px;
+        }
+
+        .form-group input:focus {
           outline: none;
-          cursor: pointer;
-          padding: 10px 15px;
-          transition: 0.3s;
-          font-size: 15px;
-          margin-right: 2px;
+          border-color: #007bff;
+          box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
         }
-        
-        .plo-tab:hover {
-          background-color: #3e8e41; /* Đậm hơn khi hover */
-        }
-        
-        .plo-tab.active {
-          background-color: #3498db; /* Màu xanh dương cho tab đang chọn */
+
+        .form-group button {
+          padding: 8px 16px; /* GIẢM */
+          background: linear-gradient(135deg, #007bff, #0056b3);
           color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: bold;
+          transition: all 0.2s ease;
         }
-        
-        .plo-tab-content {
+
+        .form-group button:hover {
+          background: linear-gradient(135deg, #0056b3, #004085);
+          transform: translateY(-1px);
+        }
+
+        .status-info {
+          background: #d1ecf1;
+          color: #0c5460;
+          padding: 10px 12px; /* GIẢM */
+          border-radius: 6px;
+          margin-bottom: 12px; /* GIẢM */
+          border-left: 4px solid #bee5eb;
+          font-size: 13px; /* GIẢM */
+        }
+
+        .error-message {
+          background: #f8d7da;
+          color: #721c24;
+          padding: 10px 12px; /* GIẢM */
+          border-radius: 6px;
+          margin-bottom: 12px; /* GIẢM */
+          border-left: 4px solid #f5c6cb;
+        }
+
+        .stats-summary {
+          background: linear-gradient(135deg, #d4edda, #c3e6cb);
+          color: #155724;
+          padding: 16px; /* GIẢM TỪ 20px */
+          border-radius: 8px;
+          margin-bottom: 20px; /* GIẢM TỪ 25px */
+          border: 1px solid #c3e6cb;
+        }
+
+        .stats-summary h3 {
+          margin-bottom: 12px; /* GIẢM */
+          color: #155724;
+          font-size: 17px; /* GIẢM */
+        }
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* GIẢM */
+          gap: 15px; /* GIẢM */
+        }
+
+        .stat-item {
+          display: flex;
+          justify-content: space-between;
+          padding: 8px; /* GIẢM */
+          background: rgba(255, 255, 255, 0.5);
+          border-radius: 6px;
+        }
+
+        .stat-label {
+          font-weight: normal;
+          font-size: 13px; /* GIẢM */
+        }
+
+        .stat-value {
+          font-weight: bold;
+          font-size: 16px; /* GIẢM TỪ 18px */
+        }
+
+        /* BIỂU ĐỒ TỔNG HỢP - GIẢM SIZE */
+        .overall-chart-container {
+          background: white;
+          border: 3px solid #007bff;
+          border-radius: 10px; /* GIẢM */
+          padding: 16px; /* GIẢM TỪ 25px */
+          margin-bottom: 28px; /* GIẢM */
+          box-shadow: 0 6px 20px rgba(0,0,0,0.1); /* GIẢM */
+        }
+
+        .overall-chart-container h3 {
+          color: #007bff;
+          margin-bottom: 12px; /* GIẢM */
+          font-size: 17px; /* GIẢM */
+        }
+
+        .chart-wrapper {
+          overflow-x: auto;
+          border: 2px solid #f1f3f4;
+          border-radius: 8px;
+          margin-bottom: 12px; /* GIẢM */
+          background: white;
+        }
+
+        /* LEGEND TỔNG HỢP - COMPACT HƠN */
+        .overall-legend {
+          padding: 12px; /* GIẢM TỪ 20px */
+          background: #f8f9fa;
+          border-radius: 6px; /* GIẢM */
+          border: 1px solid #e9ecef;
+        }
+
+        .overall-legend h4 {
+          margin-bottom: 10px; /* GIẢM */
+          color: #495057;
+          font-size: 13px; /* GIẢM */
+        }
+
+        /* LEGEND GRID COMPACT */
+        .legend-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* GIẢM */
+          gap: 6px; /* GIẢM */
+        }
+
+        .legend-row {
+          display: flex;
+          flex-direction: column;
+          gap: 4px; /* GIẢM */
+        }
+
+        /* ✅ HOVER EFFECT CHO LEGEND - TÍNH NĂNG MỚI */
+        .legend-hoverable {
+          cursor: pointer;
+          padding: 4px 6px; /* GIẢM */
+          border-radius: 4px;
+          transition: all 0.2s ease;
+        }
+
+        .legend-hoverable:hover {
+          background: rgba(0, 123, 255, 0.15);
+          transform: translateX(2px);
+          box-shadow: 0 2px 8px rgba(0,123,255,0.2);
+        }
+
+        /* BIỂU ĐỒ RIÊNG LẺ - GIẢM SIZE */
+        .individual-charts-section {
+          margin-top: 28px; /* GIẢM */
+        }
+
+        .individual-charts-section h3 {
+          margin-bottom: 20px; /* GIẢM */
+          color: #495057;
+          font-size: 17px; /* GIẢM */
+        }
+
+        .charts-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); /* GIẢM */
+          gap: 20px; /* GIẢM */
+        }
+
+        .plo-chart-container {
+          background: white;
+          border: 2px solid #e9ecef;
+          border-radius: 8px; /* GIẢM */
+          padding: 16px; /* GIẢM */
+          box-shadow: 0 3px 10px rgba(0,0,0,0.08); /* GIẢM */
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .plo-chart-container:hover {
+          transform: translateY(-1px); /* GIẢM */
+          box-shadow: 0 5px 16px rgba(0,0,0,0.12); /* GIẢM */
+        }
+
+        .plo-chart-container h4 {
+          margin-bottom: 12px; /* GIẢM */
+          color: #495057;
+          font-size: 15px; /* GIẢM */
+          text-align: center;
+        }
+
+        .chart-legend {
+          display: flex;
+          justify-content: center;
+          gap: 16px; /* GIẢM */
+          flex-wrap: wrap;
+          margin-top: 8px; /* GIẢM */
+        }
+
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 6px; /* GIẢM */
+          font-size: 11px; /* GIẢM */
+          color: #495057;
+        }
+
+        /* LEGEND LINES - GIẢM SIZE */
+        .legend-line {
+          width: 18px; /* GIẢM TỪ 25px */
+          height: 3px;
+          border-radius: 2px;
+          display: inline-block;
+        }
+
+        .legend-line.solid {
+          background: var(--plo-color);
+        }
+
+        .legend-line.dashed {
+          background: var(--plo-color);
+          opacity: 0.5;
+          position: relative;
+        }
+
+        .legend-line.dashed::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: repeating-linear-gradient(
+            to right,
+            transparent,
+            transparent 2px,
+            white 2px,
+            white 3px /* GIẢM */
+          );
+        }
+
+        /* TOOLTIP */
+        .tooltip {
+          position: absolute;
+          background: rgba(0, 0, 0, 0.95);
+          color: white;
+          padding: 12px; /* GIẢM */
+          border-radius: 8px; /* GIẢM */
+          font-size: 12px; /* GIẢM */
+          pointer-events: none;
+          z-index: 1000;
           display: none;
-          padding: 20px;
-          border: 1px solid #ccc;
-          border-top: none;
-          border-radius: 0 0 4px 4px;
-          background-color: #fff;
+          max-width: 280px; /* GIẢM */
+          box-shadow: 0 6px 20px rgba(0,0,0,0.3); /* GIẢM */
+          border: 1px solid rgba(255,255,255,0.1);
         }
-        
-        .progress-ratio {
-          text-align: center;
-          font-size: 12px;
-          margin-top: 3px;
+
+        .tooltip-semester {
+          margin-bottom: 10px; /* GIẢM */
         }
-        
-        .no-data {
-          color: #999;
-          font-style: italic;
-          text-align: center;
-          font-size: 12px;
+
+        .tooltip-semester:last-child {
+          margin-bottom: 0;
         }
-        
-        .progress-bar-not-attempted {
-          height: 100%;
-          background-color: #ffffff; /* Màu trắng cho phần chưa học */
+
+        .tooltip-semester-header {
+          font-weight: bold;
+          margin-bottom: 6px; /* GIẢM */
+          padding-bottom: 4px; /* GIẢM */
+          border-bottom: 1px solid rgba(255,255,255,0.3);
+          color: #87CEEB;
+          font-size: 13px; /* GIẢM */
         }
-        
-        .progress-bar-full {
-          height: 100%;
-          background-color: #FFD700; /* Màu vàng khi tất cả đều đạt */
+
+        .tooltip-point-item {
+          margin: 4px 0; /* GIẢM */
+          padding: 5px 8px; /* GIẢM */
+          background: rgba(255,255,255,0.1);
+          border-radius: 4px; /* GIẢM */
+          border-left: 3px solid rgba(255,255,255,0.5);
+        }
+
+        .tooltip-point-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2px; /* GIẢM */
+        }
+
+        .tooltip-plo {
+          font-weight: bold;
+          color: #FFD700;
+        }
+
+        .tooltip-type {
+          font-size: 10px; /* GIẢM */
+          color: #B0E0E6;
+        }
+
+        .tooltip-point-value {
+          text-align: right;
+          font-size: 14px; /* GIẢM */
+          color: #00FF7F;
+          font-weight: bold;
+        }
+
+        .tooltip-separator {
+          height: 1px;
+          background: rgba(255,255,255,0.2);
+          margin: 8px 0; /* GIẢM */
+        }
+
+        /* ✅ CHART EFFECTS - TÍNH NĂNG MỚI */
+        .chart-point {
+          cursor: pointer;
+          transition: fill 0.2s ease, stroke 0.2s ease;
+        }
+
+        .chart-line {
+          transition: all 0.2s ease;
+        }
+
+        .chart-line.dimmed {
+          opacity: 0.15; /* MỜ HƠN */
+          stroke-width: 1;
+        }
+
+        .chart-line.highlighted {
+          opacity: 1;
+          stroke-width: 4; /* DÀY HƠN */
+          filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+        }
+
+        .chart-point.dimmed {
+          opacity: 0.2; /* MỜ HƠN */
+          r: 2;
+        }
+
+        .chart-point.highlighted {
+          opacity: 1;
+          r: 6; /* TO HƠN */
+          filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+        }
+
+        /* RESPONSIVE - CẢI TIẾN */
+        @media (max-width: 1000px) {
+          .diagram-container {
+            max-width: 100%;
+            padding: 12px; /* GIẢM */
+          }
+          
+          #chart-overall {
+            width: 100%;
+            height: auto;
+          }
+
+          .legend-grid {
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* GIẢM */
+          }
+        }
+
+        @media (max-width: 768px) {
+          .charts-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .legend-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          #chart-overall {
+            width: 100%;
+            height: 350px; /* GIẢM */
+          }
         }
       </style>
-      
-      <!-- Script để xử lý chuyển tab -->
+
+      <script src="https://d3js.org/d3.v7.min.js"></script>
       <script>
-        function openPLOTab(evt, ploId) {
-          // Ẩn tất cả nội dung tab
-          var tabContents = document.getElementsByClassName("plo-tab-content");
-          for (var i = 0; i < tabContents.length; i++) {
-            tabContents[i].style.display = "none";
+      document.addEventListener('DOMContentLoaded', function() {
+        const chartData = <%- JSON.stringify(chartData) %>;
+        const chartStats = <%- JSON.stringify(chartStats) %>;
+        
+        console.log('📊 Chart data received:', chartData);
+
+        // ✅ FORMAT FUNCTION ĐÚNG
+        function formatNamHK(namHK) {
+          const namHKStr = namHK.toString();
+          if (namHKStr.length === 5) {
+            const nam = namHKStr.substring(0, 4);
+            const hk = namHKStr.substring(4);
+            return `${nam}/HK${hk}`;
           }
-          
-          // Loại bỏ class "active" khỏi tất cả các tab
-          var tabs = document.getElementsByClassName("plo-tab");
-          for (var i = 0; i < tabs.length; i++) {
-            tabs[i].className = tabs[i].className.replace(" active", "");
-          }
-          
-          // Hiển thị tab hiện tại và thêm class "active"
-          document.getElementById(ploId).style.display = "block";
-          evt.currentTarget.className += " active";
+          return namHKStr;
         }
+
+        // ✅ COLORS CHO TỪNG PLO
+        const ploColors = [
+          '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+          '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+          '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D2B4DE'
+        ];
+
+        // ✅ SET CSS COLORS CHO LEGEND
+        chartData.forEach((ploData, index) => {
+          const color = ploColors[index % ploColors.length];
+          const elements = document.querySelectorAll(`[data-ploindex="${index}"]`);
+          elements.forEach(el => {
+            el.style.setProperty('--plo-color', color);
+          });
+        });
+
+        // ✅ GLOBAL TOOLTIP
+        let tooltip = d3.select("#tooltip");
+
+        // ✅ ICON FUNCTION - TRẦN VỚI ICON ĐÚNG
+        function getLineTypeIcon(lineType) {
+          if (lineType === 'Đã học hết') {
+            return '📊';  // ✅ ĐÃ HỌC HẾT
+          } else if (lineType === 'Hoàn thành') {
+            return '🎯';  // ✅ HOÀN THÀNH
+          }
+          return '📈';  // ✅ DEFAULT
+        }
+
+        // ✅ PROXIMITY-BASED TOOLTIP FOR OVERALL CHART
+        function showOverallProximityTooltip(event, mouseX, mouseY) {
+          const proximityRadius = 15;
+          const nearbyPoints = [];
+          
+          // ✅ CHỈ TÌM TRONG OVERALL CHART
+          d3.select('#chart-overall').selectAll('.chart-point').each(function() {
+            const point = d3.select(this);
+            const pointX = parseFloat(point.attr('cx'));
+            const pointY = parseFloat(point.attr('cy'));
+            
+            const distance = Math.sqrt(Math.pow(mouseX - pointX, 2) + Math.pow(mouseY - pointY, 2));
+            
+            if (distance <= proximityRadius) {
+              const pointData = point.datum();
+              const classes = point.attr('class');
+              
+              let ploIndex = -1;
+              let lineType = '';
+              
+              if (classes.includes('point-') && classes.includes('-solid')) {
+                const match = classes.match(/point-(\d+)-solid/);
+                if (match) {
+                  ploIndex = parseInt(match[1]);
+                  lineType = 'Đã học hết';
+                }
+              } else if (classes.includes('point-') && classes.includes('-dashed')) {
+                const match = classes.match(/point-(\d+)-dashed/);
+                if (match) {
+                  ploIndex = parseInt(match[1]);
+                  lineType = 'Hoàn thành';
+                }
+              }
+              
+              if (ploIndex >= 0 && ploIndex < chartData.length) {
+                nearbyPoints.push({
+                  ploName: chartData[ploIndex].ploName || `PLO ${chartData[ploIndex].plo}`,
+                  type: lineType,
+                  value: pointData[1],
+                  namHK: pointData[0],
+                  color: ploColors[ploIndex % ploColors.length],
+                  distance: distance
+                });
+              }
+            }
+          });
+
+          nearbyPoints.sort((a, b) => a.distance - b.distance);
+
+          if (nearbyPoints.length === 0) {
+            hideTooltip();
+            return;
+          }
+
+          // ✅ GROUP BY namHK
+          const groupedByTime = {};
+          nearbyPoints.forEach(point => {
+            if (!groupedByTime[point.namHK]) {
+              groupedByTime[point.namHK] = [];
+            }
+            groupedByTime[point.namHK].push(point);
+          });
+
+          // ✅ CREATE TOOLTIP CONTENT VỚI ICON MỚI
+          let tooltipContent = '';
+          
+          Object.keys(groupedByTime).forEach(namHK => {
+            const pointsAtTime = groupedByTime[namHK];
+            
+            tooltipContent += `
+              <div class="tooltip-semester">
+                <div class="tooltip-semester-header">📅 ${formatNamHK(namHK)}</div>
+            `;
+            
+            pointsAtTime.forEach(point => {
+              const icon = getLineTypeIcon(point.type);  // ✅ SỬ DỤNG ICON FUNCTION
+              tooltipContent += `
+                <div class="tooltip-data" style="border-left: 3px solid ${point.color}; padding-left: 8px; margin: 4px 0;">
+                  <strong style="color: ${point.color};">${point.ploName}</strong><br>
+                  ${icon} ${point.type}: <strong>${point.value}%</strong>
+                </div>
+              `;
+            });
+            
+            tooltipContent += `</div>`;
+          });
+
+          // ✅ HIGHLIGHT NEARBY POINTS IN OVERALL CHART
+          d3.select('#chart-overall').selectAll('.chart-point').attr('r', 4).attr('stroke-width', 2);
+          nearbyPoints.forEach(point => {
+            d3.select('#chart-overall').selectAll('.chart-point').each(function() {
+              const p = d3.select(this);
+              const pointData = p.datum();
+              if (pointData[0] === point.namHK && pointData[1] === point.value) {
+                p.attr('r', 6).attr('stroke-width', 3);
+              }
+            });
+          });
+
+          tooltip
+            .style("display", "block")
+            .style("opacity", 1)
+            .html(tooltipContent)
+            .style("left", (event.pageX + 15) + "px")
+            .style("top", (event.pageY - 10) + "px");
+        }
+
+        // ✅ PROXIMITY-BASED TOOLTIP FOR INDIVIDUAL CHART
+        function showIndividualProximityTooltip(event, mouseX, mouseY, svgId, ploData, ploIndex) {
+          const proximityRadius = 12;
+          const nearbyPoints = [];
+          
+          // ✅ CHỈ TÌM TRONG SVG CỤ THỂ
+          d3.select(`#${svgId}`).selectAll('.chart-point').each(function() {
+            const point = d3.select(this);
+            const pointX = parseFloat(point.attr('cx'));
+            const pointY = parseFloat(point.attr('cy'));
+            
+            const distance = Math.sqrt(Math.pow(mouseX - pointX, 2) + Math.pow(mouseY - pointY, 2));
+            
+            if (distance <= proximityRadius) {
+              const pointData = point.datum();
+              const classes = point.attr('class');
+              
+              let lineType = '';
+              if (classes.includes('point-achieved')) {
+                lineType = 'Đã học hết';
+              } else if (classes.includes('point-completed')) {
+                lineType = 'Hoàn thành';
+              }
+              
+              nearbyPoints.push({
+                ploName: ploData.ploName || `PLO ${ploData.plo}`,
+                type: lineType,
+                value: pointData[1],
+                namHK: pointData[0],
+                color: ploColors[ploIndex % ploColors.length],
+                distance: distance
+              });
+            }
+          });
+
+          nearbyPoints.sort((a, b) => a.distance - b.distance);
+
+          if (nearbyPoints.length === 0) {
+            hideTooltip();
+            return;
+          }
+
+          // ✅ GROUP BY namHK
+          const groupedByTime = {};
+          nearbyPoints.forEach(point => {
+            if (!groupedByTime[point.namHK]) {
+              groupedByTime[point.namHK] = [];
+            }
+            groupedByTime[point.namHK].push(point);
+          });
+
+          // ✅ CREATE TOOLTIP CONTENT VỚI ICON MỚI
+          let tooltipContent = '';
+          
+          Object.keys(groupedByTime).forEach(namHK => {
+            const pointsAtTime = groupedByTime[namHK];
+            
+            tooltipContent += `
+              <div class="tooltip-semester">
+                <div class="tooltip-semester-header">📅 ${formatNamHK(namHK)}</div>
+            `;
+            
+            pointsAtTime.forEach(point => {
+              const icon = getLineTypeIcon(point.type);  // ✅ SỬ DỤNG ICON FUNCTION
+              tooltipContent += `
+                <div class="tooltip-data" style="border-left: 3px solid ${point.color}; padding-left: 8px; margin: 4px 0;">
+                  <strong style="color: ${point.color};">${point.ploName}</strong><br>
+                  ${icon} ${point.type}: <strong>${point.value}%</strong>
+                </div>
+              `;
+            });
+            
+            tooltipContent += `</div>`;
+          });
+
+          // ✅ HIGHLIGHT NEARBY POINTS CHỈ TRONG SVG NÀY
+          d3.select(`#${svgId}`).selectAll('.chart-point').attr('r', 3.5).attr('stroke-width', 1.5);
+          nearbyPoints.forEach(point => {
+            d3.select(`#${svgId}`).selectAll('.chart-point').each(function() {
+              const p = d3.select(this);
+              const pointData = p.datum();
+              if (pointData[0] === point.namHK && pointData[1] === point.value) {
+                p.attr('r', 5).attr('stroke-width', 2.5);
+              }
+            });
+          });
+
+          tooltip
+            .style("display", "block")
+            .style("opacity", 1)
+            .html(tooltipContent)
+            .style("left", (event.pageX + 15) + "px")
+            .style("top", (event.pageY - 10) + "px");
+        }
+
+        function hideTooltip() {
+          tooltip
+            .style("display", "none")
+            .style("opacity", 0);
+          
+          // ✅ RESET ALL POINTS IN ALL CHARTS
+          d3.select('#chart-overall').selectAll('.chart-point').attr('r', 4).attr('stroke-width', 2);
+          
+          chartData.forEach((ploData) => {
+            d3.select(`#chart-${ploData.plo}`).selectAll('.chart-point').attr('r', 3.5).attr('stroke-width', 1.5);
+          });
+        }
+
+        // ✅ VẼ BIỂU ĐỒ TỔNG HỢP
+        function drawOverallChart() {
+          const svg = d3.select('#chart-overall');
+          
+          // Clear existing content
+          svg.selectAll("*").remove();
+          
+          const margin = {top: 20, right: 80, bottom: 100, left: 60};
+          const width = 900 - margin.left - margin.right;
+          const height = 450 - margin.top - margin.bottom;
+
+          const g = svg.append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+          // ✅ Thu thập tất cả x values
+          const allXValues = new Set();
+          chartData.forEach(ploData => {
+            if (ploData.achievedLine && ploData.achievedLine.data) {
+              ploData.achievedLine.data.forEach(point => allXValues.add(point[0]));
+            }
+            if (ploData.completedLine && ploData.completedLine.data) {
+              ploData.completedLine.data.forEach(point => allXValues.add(point[0]));
+            }
+          });
+
+          const sortedXValues = Array.from(allXValues).sort((a, b) => a - b);
+          console.log('📅 Overall chart X values:', sortedXValues);
+
+          // ✅ SCALES
+          const xScale = d3.scalePoint()
+            .domain(sortedXValues)
+            .range([0, width])
+            .padding(0.1);
+
+          const yScale = d3.scaleLinear()
+            .domain([0, 100])
+            .range([height, 0]);
+
+          // ✅ AXES VỚI KHOẢNG CÁCH LỚN HƠN
+          const xAxisGroup = g.append('g')
+            .attr('transform', `translate(0,${height + 20})`)
+            .call(d3.axisBottom(xScale).tickFormat(d => formatNamHK(d)));
+          
+          xAxisGroup.selectAll('text')
+            .style('text-anchor', 'middle')
+            .style('font-size', sortedXValues.length > 10 ? '9px' : '11px')
+            .attr('dx', '0')
+            .attr('dy', '.71em')
+            .attr('transform', 'rotate(0)');
+
+          g.append('g')
+            .call(d3.axisLeft(yScale))
+            .selectAll('text')
+            .style('font-size', '11px');
+
+          // ✅ GRID LINES
+          g.append('g')
+            .attr('class', 'grid')
+            .attr('transform', `translate(0,${height})`)
+            .call(d3.axisBottom(xScale)
+              .tickSize(-height)
+              .tickFormat('')
+            )
+            .style('stroke-dasharray', '3,3')
+            .style('opacity', 0.3);
+
+          g.append('g')
+            .attr('class', 'grid')
+            .call(d3.axisLeft(yScale)
+              .tickSize(-width)
+              .tickFormat('')
+            )
+            .style('stroke-dasharray', '3,3')
+            .style('opacity', 0.3);
+
+          // ✅ LINE GENERATOR
+          const line = d3.line()
+            .x(d => xScale(d[0]))
+            .y(d => yScale(d[1]))
+            .curve(d3.curveMonotoneX);
+
+          // ✅ VẼ LINES
+          chartData.forEach((ploData, ploIndex) => {
+            const color = ploColors[ploIndex % ploColors.length];
+
+            // Achieved line (solid)
+            if (ploData.achievedLine && ploData.achievedLine.data && ploData.achievedLine.data.length > 0) {
+              g.append('path')
+                .datum(ploData.achievedLine.data)
+                .attr('class', `chart-line line-${ploIndex}-solid`)
+                .attr('fill', 'none')
+                .attr('stroke', color)
+                .attr('stroke-width', 2.5)
+                .attr('d', line);
+            }
+
+            // Completed line (dashed)
+            if (ploData.completedLine && ploData.completedLine.data && ploData.completedLine.data.length > 0) {
+              g.append('path')
+                .datum(ploData.completedLine.data)
+                .attr('class', `chart-line line-${ploIndex}-dashed`)
+                .attr('fill', 'none')
+                .attr('stroke', color)
+                .attr('stroke-width', 2.5)
+                .attr('stroke-dasharray', '5,5')
+                .attr('opacity', 0.8)
+                .attr('d', line);
+            }
+          });
+
+          // ✅ VẼ POINTS
+          chartData.forEach((ploData, ploIndex) => {
+            const color = ploColors[ploIndex % ploColors.length];
+
+            // Points for achieved line
+            if (ploData.achievedLine && ploData.achievedLine.data && ploData.achievedLine.data.length > 0) {
+              g.selectAll(`.point-${ploIndex}-solid`)
+                .data(ploData.achievedLine.data)
+                .enter().append('circle')
+                .attr('class', `chart-point point-${ploIndex}-solid`)
+                .attr('cx', d => xScale(d[0]))
+                .attr('cy', d => yScale(d[1]))
+                .attr('r', 4)
+                .attr('fill', color)
+                .attr('stroke', 'white')
+                .attr('stroke-width', 2);
+            }
+
+            // Points for completed line
+            if (ploData.completedLine && ploData.completedLine.data && ploData.completedLine.data.length > 0) {
+              g.selectAll(`.point-${ploIndex}-dashed`)
+                .data(ploData.completedLine.data)
+                .enter().append('circle')
+                .attr('class', `chart-point point-${ploIndex}-dashed`)
+                .attr('cx', d => xScale(d[0]))
+                .attr('cy', d => yScale(d[1]))
+                .attr('r', 4)
+                .attr('fill', color)
+                .attr('stroke', 'white')
+                .attr('stroke-width', 2)
+                .attr('opacity', 0.8);
+            }
+          });
+
+          // ✅ MOUSE OVERLAY CHO OVERALL CHART
+          g.append('rect')
+            .attr('class', 'mouse-overlay')
+            .attr('width', width)
+            .attr('height', height)
+            .attr('fill', 'transparent')
+            .style('cursor', 'crosshair')
+            .on('mousemove', function(event) {
+              const [mouseX, mouseY] = d3.pointer(event, this);
+              showOverallProximityTooltip(event, mouseX, mouseY);
+            })
+            .on('mouseleave', hideTooltip);
+
+          // ✅ AXIS LABELS
+          g.append('text')
+            .attr('transform', 'rotate(-90)')
+            .attr('y', 0 - margin.left)
+            .attr('x', 0 - (height / 2))
+            .attr('dy', '1em')
+            .style('text-anchor', 'middle')
+            .style('font-size', '14px')
+            .style('font-weight', 'bold')
+            .style('fill', '#495057')
+            .text('Tỷ lệ (%)');
+
+          g.append('text')
+            .attr('transform', `translate(${width / 2}, ${height + 80})`)
+            .style('text-anchor', 'middle')
+            .style('font-size', '14px')
+            .style('font-weight', 'bold')
+            .style('fill', '#495057')
+            .text('Học kỳ');
+        }
+
+        // ✅ VẼ BIỂU ĐỒ RIÊNG LẺ
+        function drawIndividualChart(ploData, ploIndex) {
+          const svgId = `chart-${ploData.plo}`;
+          const svg = d3.select(`#${svgId}`);
+          
+          // Clear existing content
+          svg.selectAll("*").remove();
+          
+          const margin = {top: 15, right: 15, bottom: 60, left: 45};
+          const width = 380 - margin.left - margin.right;
+          const height = 230 - margin.top - margin.bottom;
+
+          const g = svg.append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+          // ✅ Extract x values cho PLO này
+          const allXValues = new Set();
+          if (ploData.achievedLine && ploData.achievedLine.data) {
+            ploData.achievedLine.data.forEach(point => allXValues.add(point[0]));
+          }
+          if (ploData.completedLine && ploData.completedLine.data) {
+            ploData.completedLine.data.forEach(point => allXValues.add(point[0]));
+          }
+
+          if (allXValues.size === 0) {
+            g.append('text')
+              .attr('x', width / 2)
+              .attr('y', height / 2)
+              .attr('text-anchor', 'middle')
+              .style('font-size', '14px')
+              .style('fill', '#6c757d')
+              .text('Không có dữ liệu');
+            return;
+          }
+
+          const sortedXValues = Array.from(allXValues).sort((a, b) => a - b);
+
+          // ✅ SCALES
+          const xScale = d3.scalePoint()
+            .domain(sortedXValues)
+            .range([0, width])
+            .padding(0.2);
+
+          const yScale = d3.scaleLinear()
+            .domain([0, 100])
+            .range([height, 0]);
+
+          // ✅ AXES VỚI KHOẢNG CÁCH LỚN HƠN
+          const xAxisGroup = g.append('g')
+            .attr('transform', `translate(0,${height + 15})`)
+            .call(d3.axisBottom(xScale).tickFormat(d => formatNamHK(d)));
+          
+          xAxisGroup.selectAll('text')
+            .style('font-size', sortedXValues.length > 6 ? '8px' : '10px')
+            .style('text-anchor', 'middle')
+            .attr('dx', '0')
+            .attr('dy', '.71em')
+            .attr('transform', 'rotate(0)');
+
+          g.append('g')
+            .call(d3.axisLeft(yScale).ticks(5))
+            .selectAll('text')
+            .style('font-size', '10px');
+
+          // ✅ GRID LINES
+          g.append('g')
+            .attr('class', 'grid')
+            .attr('transform', `translate(0,${height})`)
+            .call(d3.axisBottom(xScale)
+              .tickSize(-height)
+              .tickFormat('')
+            )
+            .style('stroke-dasharray', '2,2')
+            .style('opacity', 0.3);
+
+          g.append('g')
+            .attr('class', 'grid')
+            .call(d3.axisLeft(yScale)
+              .tickSize(-width)
+              .tickFormat('')
+            )
+            .style('stroke-dasharray', '2,2')
+            .style('opacity', 0.3);
+
+          const line = d3.line()
+            .x(d => xScale(d[0]))
+            .y(d => yScale(d[1]))
+            .curve(d3.curveMonotoneX);
+
+          const color = ploColors[ploIndex % ploColors.length];
+
+          // ✅ VẼ LINES
+          if (ploData.achievedLine && ploData.achievedLine.data && ploData.achievedLine.data.length > 0) {
+            g.append('path')
+              .datum(ploData.achievedLine.data)
+              .attr('fill', 'none')
+              .attr('stroke', color)
+              .attr('stroke-width', 2.5)
+              .attr('d', line);
+          }
+
+          if (ploData.completedLine && ploData.completedLine.data && ploData.completedLine.data.length > 0) {
+            g.append('path')
+              .datum(ploData.completedLine.data)
+              .attr('fill', 'none')
+              .attr('stroke', color)
+              .attr('stroke-width', 2.5)
+              .attr('stroke-dasharray', '4,4')
+              .attr('opacity', 0.8)
+              .attr('d', line);
+          }
+
+          // ✅ VẼ POINTS VỚI CLASS NAMES RIÊNG BIỆT
+          if (ploData.achievedLine && ploData.achievedLine.data && ploData.achievedLine.data.length > 0) {
+            g.selectAll('.point-achieved')
+              .data(ploData.achievedLine.data)
+              .enter().append('circle')
+              .attr('class', 'chart-point point-achieved')
+              .attr('cx', d => xScale(d[0]))
+              .attr('cy', d => yScale(d[1]))
+              .attr('r', 3.5)
+              .attr('fill', color)
+              .attr('stroke', 'white')
+              .attr('stroke-width', 1.5);
+          }
+
+          if (ploData.completedLine && ploData.completedLine.data && ploData.completedLine.data.length > 0) {
+            g.selectAll('.point-completed')
+              .data(ploData.completedLine.data)
+              .enter().append('circle')
+              .attr('class', 'chart-point point-completed')
+              .attr('cx', d => xScale(d[0]))
+              .attr('cy', d => yScale(d[1]))
+              .attr('r', 3.5)
+              .attr('fill', color)
+              .attr('stroke', 'white')
+              .attr('stroke-width', 1.5)
+              .attr('opacity', 0.8);
+          }
+
+          // ✅ MOUSE OVERLAY CHO INDIVIDUAL CHART
+          g.append('rect')
+            .attr('class', 'mouse-overlay-individual')
+            .attr('width', width)
+            .attr('height', height)
+            .attr('fill', 'transparent')
+            .style('cursor', 'crosshair')
+            .on('mousemove', function(event) {
+              const [mouseX, mouseY] = d3.pointer(event, this);
+              showIndividualProximityTooltip(event, mouseX, mouseY, svgId, ploData, ploIndex);
+            })
+            .on('mouseleave', hideTooltip);
+        }
+
+        // ✅ SETUP LEGEND HOVER EFFECTS
+        function setupLegendHoverEffects() {
+          const legendItems = document.querySelectorAll('.legend-hoverable');
+          
+          legendItems.forEach(item => {
+            item.addEventListener('mouseenter', function() {
+              const ploIndex = this.dataset.ploindex;
+              const lineType = this.dataset.linetype;
+              
+              // Dim all lines and points
+              d3.selectAll('.chart-line').style('opacity', 0.2);
+              d3.selectAll('.chart-point').style('opacity', 0.2);
+              
+              // Highlight specific line and points
+              d3.selectAll(`.line-${ploIndex}-${lineType}`).style('opacity', 1);
+              d3.selectAll(`.point-${ploIndex}-${lineType}`).style('opacity', 1);
+            });
+            
+            item.addEventListener('mouseleave', function() {
+              // Reset all opacities
+              d3.selectAll('.chart-line').style('opacity', null);
+              d3.selectAll('.chart-point').style('opacity', null);
+              
+              // Restore dashed line opacity
+              d3.selectAll('.line-dashed').style('opacity', 0.8);
+              d3.selectAll('.point-dashed').style('opacity', 0.8);
+            });
+          });
+        }
+
+        // ✅ KHỞI TẠO TẤT CẢ
+        console.log('🚀 Initializing charts...');
+
+        // Vẽ biểu đồ tổng hợp
+        drawOverallChart();
+
+        // Vẽ các biểu đồ riêng lẻ
+        chartData.forEach((ploData, index) => {
+          drawIndividualChart(ploData, index);
+        });
+
+        // Setup legend hover effects
+        setupLegendHoverEffects();
+
+        console.log(`✅ Created ${chartData.length} PLO charts successfully`);
+      });
       </script>
     <% } %>
   </div>
